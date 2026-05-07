@@ -2,42 +2,1008 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>G4.9 FCT Dashboard</title>
-</head>
-<body>
-    <h1>G4.9 FCT Fail Dashboard</h1>
-    <p>如果你能看到这行字，说明 Flask + HTML 页面已经打通。</p>
+    <title>G4.9 FCT Fail Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <hr>
+    <style>
+        :root {
+            --bg: #0f172a;
+            --bg-sub: #111827;
+            --panel: #1f2937;
+            --panel-soft: #243044;
+            --panel-head: #182132;
 
-    <h2>SN 查询测试</h2>
-    <input id="snInput" placeholder="输入 SN，例如 G49-001">
-    <button onclick="searchSN()">查询</button>
+            --border: #374151;
+            --border-light: #4b5563;
 
-    <div id="result" style="margin-top:20px;"></div>
+            --text-main: #e5e7eb;
+            --text-sub: #9ca3af;
+            --text-light: #6b7280;
 
-    <script>
-        async function searchSN() {
-            const sn = document.getElementById("snInput").value.trim();
-            const resultDiv = document.getElementById("result");
+            --blue: #3b82f6;
+            --green: #22c55e;
+            --red: #ef4444;
+            --orange: #f97316;
+            --gray: #9ca3af;
 
-            if (!sn) {
-                alert("请输入 SN");
-                return;
+            --table-head: #111827;
+            --row-hover: #2b3648;
+            --input-bg: #111827;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: "Segoe UI", Arial, "Microsoft YaHei", sans-serif;
+            background: var(--bg);
+            color: var(--text-main);
+            font-size: 14px;
+        }
+
+        .topbar {
+            background: #020617;
+            color: var(--text-main);
+            padding: 14px 24px;
+            border-bottom: 3px solid var(--blue);
+        }
+
+        .topbar-inner {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .topbar h1 {
+            margin: 0;
+            font-size: 22px;
+            font-weight: 600;
+            letter-spacing: 0.2px;
+        }
+
+        .topbar .subtitle {
+            margin-top: 4px;
+            color: var(--text-sub);
+            font-size: 13px;
+        }
+
+        .system-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: #111827;
+            border: 1px solid var(--border);
+            padding: 7px 12px;
+            border-radius: 4px;
+            font-size: 13px;
+            color: var(--text-sub);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--green);
+        }
+
+        .layout {
+            max-width: 1400px;
+            margin: 20px auto;
+            padding: 0 20px 30px;
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 14px;
+            margin-bottom: 16px;
+        }
+
+        .card {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            margin-bottom: 16px;
+        }
+
+        .card-header {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            background: var(--panel-head);
+        }
+
+        .card-title {
+            margin: 0;
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .card-note {
+            font-size: 12px;
+            color: var(--text-sub);
+        }
+
+        .card-body {
+            padding: 16px;
+        }
+
+        .summary-card {
+            padding: 16px;
+            min-height: 96px;
+            border-left: 4px solid var(--blue);
+            background: var(--panel);
+        }
+
+        .summary-card.pass {
+            border-left-color: var(--green);
+        }
+
+        .summary-card.fail {
+            border-left-color: var(--red);
+        }
+
+        .summary-card.error {
+            border-left-color: var(--orange);
+        }
+
+        .summary-title {
+            color: var(--text-sub);
+            font-size: 13px;
+            margin-bottom: 10px;
+        }
+
+        .summary-value {
+            font-size: 32px;
+            font-weight: 700;
+            line-height: 1;
+        }
+
+        .blue {
+            color: var(--blue);
+        }
+
+        .green {
+            color: var(--green);
+        }
+
+        .red {
+            color: var(--red);
+        }
+
+        .orange {
+            color: var(--orange);
+        }
+
+        .gray {
+            color: var(--gray);
+        }
+
+        .search-row {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        input {
+            height: 38px;
+            width: 340px;
+            max-width: 100%;
+            padding: 0 10px;
+            border: 1px solid var(--border-light);
+            border-radius: 3px;
+            font-size: 14px;
+            background: var(--input-bg);
+            color: var(--text-main);
+            outline: none;
+        }
+
+        input::placeholder {
+            color: var(--text-light);
+        }
+
+        input:focus {
+            border-color: var(--blue);
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25);
+        }
+
+        button {
+            height: 38px;
+            padding: 0 14px;
+            border: 1px solid var(--blue);
+            border-radius: 3px;
+            background: var(--blue);
+            color: #ffffff;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #2563eb;
+            border-color: #2563eb;
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: var(--text-main);
+            border-color: var(--border-light);
+        }
+
+        .btn-secondary:hover {
+            background: #374151;
+            border-color: #6b7280;
+        }
+
+        .hint {
+            margin-top: 10px;
+            color: var(--text-sub);
+            font-size: 12px;
+        }
+
+        .result-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 8px 24px;
+            margin-bottom: 12px;
+        }
+
+        .info-row {
+            line-height: 1.8;
+        }
+
+        .info-label {
+            display: inline-block;
+            min-width: 82px;
+            color: var(--text-sub);
+        }
+
+        .badge {
+            display: inline-block;
+            min-width: 70px;
+            text-align: center;
+            padding: 3px 8px;
+            border-radius: 3px;
+            color: #ffffff;
+            font-weight: 600;
+            font-size: 12px;
+        }
+
+        .badge-pass {
+            background: var(--green);
+            color: #052e16;
+        }
+
+        .badge-fail {
+            background: var(--red);
+        }
+
+        .badge-error {
+            background: var(--orange);
+        }
+
+        .badge-gray {
+            background: #6b7280;
+        }
+
+        .fail-box {
+            border: 1px solid rgba(239, 68, 68, 0.45);
+            background: rgba(127, 29, 29, 0.28);
+            padding: 10px 12px;
+            margin-top: 12px;
+            border-radius: 3px;
+        }
+
+        .fail-box-title {
+            font-weight: 600;
+            color: #fca5a5;
+            margin-bottom: 6px;
+        }
+
+        .fail-list {
+            margin: 0;
+            padding-left: 20px;
+            color: #fca5a5;
+        }
+
+        .fail-list li {
+            margin: 4px 0;
+        }
+
+        .pass-message {
+            border: 1px solid rgba(34, 197, 94, 0.45);
+            background: rgba(20, 83, 45, 0.28);
+            color: #86efac;
+            padding: 10px 12px;
+            border-radius: 3px;
+            margin-top: 12px;
+            font-weight: 600;
+        }
+
+        .table-wrap {
+            width: 100%;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            border-radius: 3px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 800px;
+        }
+
+        th {
+            background: var(--table-head);
+            color: var(--text-sub);
+            font-weight: 600;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+            padding: 9px 10px;
+            white-space: nowrap;
+        }
+
+        td {
+            border-bottom: 1px solid var(--border);
+            padding: 8px 10px;
+            vertical-align: top;
+            color: var(--text-main);
+        }
+
+        tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        tbody tr:hover {
+            background: var(--row-hover);
+        }
+
+        tbody tr {
+            cursor: pointer;
+        }
+
+        .item-pass {
+            color: #86efac;
+            font-weight: 600;
+        }
+
+        .item-fail {
+            color: #fca5a5;
+            font-weight: 600;
+        }
+
+        .item-error {
+            color: #fdba74;
+            font-weight: 600;
+        }
+
+        .top-fail-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .top-fail-row:last-child {
+            border-bottom: none;
+        }
+
+        .top-fail-name {
+            color: var(--text-main);
+        }
+
+        .top-fail-count {
+            font-weight: 700;
+            color: #fca5a5;
+        }
+
+        .empty {
+            color: var(--text-sub);
+            padding: 8px 0;
+        }
+
+        .loading {
+            color: var(--text-sub);
+        }
+
+        .new-mark {
+            display: inline-block;
+            margin-left: 6px;
+            padding: 1px 5px;
+            border-radius: 3px;
+            background: rgba(59, 130, 246, 0.18);
+            color: #93c5fd;
+            font-size: 11px;
+            font-weight: 600;
+            border: 1px solid rgba(147, 197, 253, 0.25);
+        }
+
+        .row-new td {
+            background: rgba(30, 64, 175, 0.28);
+        }
+
+        .footer {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 8px 20px 24px;
+            color: var(--text-light);
+            font-size: 12px;
+            text-align: right;
+        }
+
+        @media (max-width: 1000px) {
+            .summary-grid {
+                grid-template-columns: repeat(2, 1fr);
             }
 
-            resultDiv.innerHTML = "查询中...";
+            .result-grid {
+                grid-template-columns: 1fr;
+            }
+        }
 
-            const response = await fetch(`/api/sn/${sn}`);
+        @media (max-width: 600px) {
+            .layout {
+                padding: 0 12px 24px;
+            }
+
+            .topbar {
+                padding: 12px 14px;
+            }
+
+            .summary-grid {
+                grid-template-columns: 1fr;
+            }
+
+            input,
+            button {
+                width: 100%;
+            }
+
+            .card-body {
+                padding: 12px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="topbar">
+    <div class="topbar-inner">
+        <div>
+            <h1>G4.9 FCT 不良面板</h1>
+            <div class="subtitle">FCT XML 解析 / 最近记录 / FAIL 项追踪 / Dark Industrial UI</div>
+        </div>
+
+        <div class="system-status">
+            <span class="status-dot"></span>
+            <span id="lastRefreshText">等待刷新</span>
+        </div>
+    </div>
+</div>
+
+<div class="layout">
+
+    <div class="summary-grid">
+        <div class="card summary-card">
+            <div class="summary-title">总测试记录</div>
+            <div class="summary-value blue" id="totalCount">-</div>
+        </div>
+
+        <div class="card summary-card pass">
+            <div class="summary-title">PASS 数量</div>
+            <div class="summary-value green" id="passCount">-</div>
+        </div>
+
+        <div class="card summary-card fail">
+            <div class="summary-title">FAIL 数量</div>
+            <div class="summary-value red" id="failCount">-</div>
+        </div>
+
+        <div class="card summary-card error">
+            <div class="summary-title">解析异常</div>
+            <div class="summary-value orange" id="parseErrorCount">-</div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">SN 查询</h2>
+            <span class="card-note">输入 SN 查询单台 FCT 测试结果</span>
+        </div>
+
+        <div class="card-body">
+            <div class="search-row">
+                <input id="snInput" placeholder="输入 SN，例如 G49-001" onkeydown="handleEnter(event)">
+                <button onclick="searchSN()">查询</button>
+                <button class="btn-secondary" onclick="clearResult()">清空</button>
+            </div>
+
+            <div class="hint">
+                说明：点击下方“新加入 XML 文件”或“最近测试记录”中的任意行，也可以自动查询该 SN。
+            </div>
+        </div>
+    </div>
+
+    <div class="card" id="resultCard" style="display: none;">
+        <div class="card-header">
+            <h2 class="card-title">查询结果</h2>
+        </div>
+
+        <div class="card-body" id="resultArea"></div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">新上传 XML 表单</h2>
+            <span class="card-note">按文件上传 / 修改时间倒序，自动刷新</span>
+        </div>
+
+        <div class="card-body" id="newXmlArea">
+            <div class="loading">加载中...</div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">FAIL项排行</h2>
+            <span class="card-note">按 FAIL 次数排序</span>
+        </div>
+
+        <div class="card-body" id="topFailArea">
+            <div class="loading">加载中...</div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">最近测试记录</h2>
+            <span class="card-note">最近 20 条 XML 解析结果</span>
+        </div>
+
+        <div class="card-body" id="recentRecordsArea">
+            <div class="loading">加载中...</div>
+        </div>
+    </div>
+
+</div>
+
+<div class="footer">
+    G4.9 FCT Fail Dashboard · Flask + XML Parser · Dark Industrial Minimal UI
+</div>
+
+<script>
+    let knownXmlFiles = new Set();
+    let firstLoadDone = false;
+
+    function updateLastRefreshTime() {
+        const now = new Date();
+        const text = now.toLocaleString("zh-CN", { hour12: false });
+        document.getElementById("lastRefreshText").innerText = "最后刷新：" + text;
+    }
+
+    function setText(id, value) {
+        const el = document.getElementById(id);
+        if (el) {
+            el.innerText = value ?? 0;
+        }
+    }
+
+    async function loadStats() {
+        try {
+            const response = await fetch("/api/stats");
             const data = await response.json();
 
-            resultDiv.innerHTML = `
-                <p><b>SN：</b>${data.sn}</p>
-                <p><b>站点：</b>${data.station}</p>
-                <p><b>结果：</b>${data.result}</p>
-                <p><b>失败项：</b>${data.fail_items.join(", ")}</p>
+            setText("totalCount", data.total);
+            setText("passCount", data.pass);
+            setText("failCount", data.fail);
+            setText("parseErrorCount", data.parse_error);
+
+            renderTopFail(data.top_fail || {});
+        } catch (error) {
+            document.getElementById("topFailArea").innerHTML =
+                '<div class="empty">统计数据加载失败：' + escapeHtml(error) + '</div>';
+        }
+    }
+
+    function renderTopFail(topFail) {
+        const area = document.getElementById("topFailArea");
+        const entries = Object.entries(topFail);
+
+        if (entries.length === 0) {
+            area.innerHTML = '<div class="empty">当前暂无 FAIL 项统计。</div>';
+            return;
+        }
+
+        entries.sort((a, b) => b[1] - a[1]);
+
+        let html = "";
+
+        entries.forEach(function(entry, index) {
+            const itemName = entry[0];
+            const count = entry[1];
+
+            html += `
+                <div class="top-fail-row">
+                    <span class="top-fail-name">${index + 1}. ${escapeHtml(itemName)}</span>
+                    <span class="top-fail-count">${count}</span>
+                </div>
+            `;
+        });
+
+        area.innerHTML = html;
+    }
+
+    async function searchSN() {
+        const sn = document.getElementById("snInput").value.trim();
+        const resultCard = document.getElementById("resultCard");
+        const resultArea = document.getElementById("resultArea");
+
+        if (!sn) {
+            alert("请输入 SN");
+            return;
+        }
+
+        resultCard.style.display = "block";
+        resultArea.innerHTML = '<div class="loading">查询中...</div>';
+
+        try {
+            const response = await fetch("/api/sn/" + encodeURIComponent(sn));
+            const data = await response.json();
+            renderResult(data);
+        } catch (error) {
+            resultArea.innerHTML = '<div class="red">查询失败：' + escapeHtml(error) + '</div>';
+        }
+    }
+
+    function renderResult(data) {
+        const resultArea = document.getElementById("resultArea");
+
+        let badgeClass = "badge-gray";
+        if (data.result === "PASS") {
+            badgeClass = "badge-pass";
+        } else if (data.result === "FAIL") {
+            badgeClass = "badge-fail";
+        } else if (data.result === "PARSE_ERROR") {
+            badgeClass = "badge-error";
+        }
+
+        let html = `
+            <div class="result-grid">
+                <div class="info-row">
+                    <span class="info-label">SN：</span>
+                    <b>${escapeHtml(data.sn || "-")}</b>
+                </div>
+
+                <div class="info-row">
+                    <span class="info-label">站点：</span>
+                    <b>${escapeHtml(data.station || "FCT")}</b>
+                </div>
+
+                <div class="info-row">
+                    <span class="info-label">结果：</span>
+                    <span class="badge ${badgeClass}">${escapeHtml(data.result || "UNKNOWN")}</span>
+                </div>
+
+                <div class="info-row">
+                    <span class="info-label">测试时间：</span>
+                    <b>${escapeHtml(data.time || "-")}</b>
+                </div>
+
+                <div class="info-row">
+                    <span class="info-label">XML 文件：</span>
+                    <b>${escapeHtml(data.source_file || "-")}</b>
+                </div>
+
+                <div class="info-row">
+                    <span class="info-label">文件时间：</span>
+                    <b>${escapeHtml(data.file_mtime || "-")}</b>
+                </div>
+            </div>
+        `;
+
+        if (data.message) {
+            html += '<div class="empty">' + escapeHtml(data.message) + '</div>';
+        }
+
+        if (data.error) {
+            html += '<div class="orange">解析错误：' + escapeHtml(data.error) + '</div>';
+        }
+
+        if (data.fail_items && data.fail_items.length > 0) {
+            html += `
+                <div class="fail-box">
+                    <div class="fail-box-title">失败项</div>
+                    <ul class="fail-list">
+            `;
+
+            data.fail_items.forEach(function(item) {
+                html += '<li>' + escapeHtml(item) + '</li>';
+            });
+
+            html += `
+                    </ul>
+                </div>
+            `;
+        } else if (data.result === "PASS") {
+            html += '<div class="pass-message">该 SN 当前 FCT 测试通过。</div>';
+        }
+
+        if (data.raw_items && data.raw_items.length > 0) {
+            html += `
+                <h3 style="margin-top: 18px; font-size: 15px;">原始测试项明细</h3>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>测试项</th>
+                                <th>结果</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+
+            data.raw_items.forEach(function(item, index) {
+                const resultClass = item.result === "PASS"
+                    ? "item-pass"
+                    : item.result === "FAIL"
+                        ? "item-fail"
+                        : "gray";
+
+                html += `
+                    <tr>
+                        <td>${index + 1}</td>
+                        <td>${escapeHtml(item.name || "-")}</td>
+                        <td class="${resultClass}">${escapeHtml(item.result || "-")}</td>
+                    </tr>
+                `;
+            });
+
+            html += `
+                        </tbody>
+                    </table>
+                </div>
             `;
         }
-    </script>
+
+        resultArea.innerHTML = html;
+    }
+
+    async function loadNewXmlList() {
+        const area = document.getElementById("newXmlArea");
+
+        try {
+            const response = await fetch("/api/recent_xml");
+            const data = await response.json();
+            renderNewXmlList(data);
+        } catch (error) {
+            area.innerHTML = '<div class="empty">新 XML 文件列表加载失败：' + escapeHtml(error) + '</div>';
+        }
+    }
+
+    function renderNewXmlList(records) {
+        const area = document.getElementById("newXmlArea");
+
+        if (!records || records.length === 0) {
+            area.innerHTML = '<div class="empty">当前 logs 目录下暂无 XML 文件。</div>';
+            return;
+        }
+
+        let html = `
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>XML 文件</th>
+                            <th>SN</th>
+                            <th>站点</th>
+                            <th>结果</th>
+                            <th>FAIL 项</th>
+                            <th>文件时间</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+
+        records.forEach(function(record, index) {
+            const sourceFile = record.source_file || "";
+            const isNew = firstLoadDone && sourceFile && !knownXmlFiles.has(sourceFile);
+            const resultClass = getResultClass(record.result);
+            const failItems = record.fail_items && record.fail_items.length > 0
+                ? record.fail_items.join(", ")
+                : "-";
+
+            html += `
+                <tr class="${isNew ? "row-new" : ""}" onclick="quickSearchSN('${escapeAttr(record.sn || "")}')">
+                    <td>${index + 1}</td>
+                    <td>
+                        <b>${escapeHtml(sourceFile || "-")}</b>
+                        ${isNew ? '<span class="new-mark">NEW</span>' : ""}
+                    </td>
+                    <td>${escapeHtml(record.sn || "-")}</td>
+                    <td>${escapeHtml(record.station || "FCT")}</td>
+                    <td class="${resultClass}">${escapeHtml(record.result || "-")}</td>
+                    <td>${escapeHtml(failItems)}</td>
+                    <td>${escapeHtml(record.file_mtime || "-")}</td>
+                </tr>
+            `;
+
+            if (sourceFile) {
+                knownXmlFiles.add(sourceFile);
+            }
+        });
+
+        html += `
+                    </tbody>
+                </table>
+            </div>
+        `;
+
+        firstLoadDone = true;
+        area.innerHTML = html;
+    }
+
+    async function loadRecentRecords() {
+        const area = document.getElementById("recentRecordsArea");
+
+        try {
+            const response = await fetch("/api/all");
+            const data = await response.json();
+            renderRecentRecords(data);
+        } catch (error) {
+            area.innerHTML = '<div class="empty">最近记录加载失败：' + escapeHtml(error) + '</div>';
+        }
+    }
+
+    function renderRecentRecords(records) {
+        const area = document.getElementById("recentRecordsArea");
+
+        if (!records || records.length === 0) {
+            area.innerHTML = '<div class="empty">当前 logs 目录下暂无 XML 测试记录。</div>';
+            return;
+        }
+
+        const latestRecords = records.slice(0, 20);
+
+        let html = `
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>SN</th>
+                            <th>站点</th>
+                            <th>结果</th>
+                            <th>失败项</th>
+                            <th>测试时间</th>
+                            <th>XML 文件</th>
+                            <th>文件时间</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+
+        latestRecords.forEach(function(record, index) {
+            const resultClass = getResultClass(record.result);
+            const failItems = record.fail_items && record.fail_items.length > 0
+                ? record.fail_items.join(", ")
+                : "-";
+
+            html += `
+                <tr onclick="quickSearchSN('${escapeAttr(record.sn || "")}')">
+                    <td>${index + 1}</td>
+                    <td><b>${escapeHtml(record.sn || "-")}</b></td>
+                    <td>${escapeHtml(record.station || "FCT")}</td>
+                    <td class="${resultClass}">${escapeHtml(record.result || "-")}</td>
+                    <td>${escapeHtml(failItems)}</td>
+                    <td>${escapeHtml(record.time || "-")}</td>
+                    <td>${escapeHtml(record.source_file || "-")}</td>
+                    <td>${escapeHtml(record.file_mtime || "-")}</td>
+                </tr>
+            `;
+        });
+
+        html += `
+                    </tbody>
+                </table>
+            </div>
+        `;
+
+        area.innerHTML = html;
+    }
+
+    function getResultClass(result) {
+        if (result === "PASS") {
+            return "item-pass";
+        }
+
+        if (result === "FAIL") {
+            return "item-fail";
+        }
+
+        if (result === "PARSE_ERROR") {
+            return "item-error";
+        }
+
+        return "gray";
+    }
+
+    function quickSearchSN(sn) {
+        if (!sn || sn.startsWith("PARSE_ERROR_")) {
+            return;
+        }
+
+        document.getElementById("snInput").value = sn;
+        searchSN();
+
+        window.scrollTo({
+            top: 0,
+            behavior: "smooth"
+        });
+    }
+
+    function clearResult() {
+        document.getElementById("snInput").value = "";
+        document.getElementById("resultCard").style.display = "none";
+        document.getElementById("resultArea").innerHTML = "";
+    }
+
+    function handleEnter(event) {
+        if (event.key === "Enter") {
+            searchSN();
+        }
+    }
+
+    async function refreshAll() {
+        await Promise.all([
+            loadStats(),
+            loadNewXmlList(),
+            loadRecentRecords()
+        ]);
+
+        updateLastRefreshTime();
+    }
+
+    function escapeHtml(value) {
+        return String(value)
+            .replaceAll("&", "&amp;")
+            .replaceAll("<", "&lt;")
+            .replaceAll(">", "&gt;")
+            .replaceAll('"', "&quot;")
+            .replaceAll("'", "&#039;");
+    }
+
+    function escapeAttr(value) {
+        return String(value)
+            .replaceAll("\\", "\\\\")
+            .replaceAll("'", "\\'")
+            .replaceAll('"', "&quot;")
+            .replaceAll("<", "&lt;")
+            .replaceAll(">", "&gt;");
+    }
+
+    window.onload = function () {
+        refreshAll();
+
+        setInterval(function () {
+            refreshAll();
+        }, 5000);
+    };
+</script>
+
 </body>
 </html>
