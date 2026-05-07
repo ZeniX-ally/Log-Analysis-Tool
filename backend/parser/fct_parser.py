@@ -348,7 +348,6 @@ def parse_abnormal_groups(root):
         if not name:
             continue
 
-        # 跳过太泛化的大流程节点，避免定位不清晰
         if name in {"MainSequence Callback"}:
             continue
 
@@ -516,19 +515,16 @@ def parse_fct_xml(xml_file_path):
             raw_items=raw_items
         )
 
-        # 如果整机中断但 TEST 没有明确中断项，则用 GROUP 兜底定位
         if result == "INTERRUPTED" and not interrupted_items:
             for group in group_info.get("interrupted_groups", []):
                 if group["name"] not in interrupted_items:
                     interrupted_items.append(group["name"])
 
-        # 如果整机暂停但 TEST 没有明确暂停项，则用 GROUP 兜底定位
         if result == "PAUSED" and not paused_items:
             for group in group_info.get("paused_groups", []):
                 if group["name"] not in paused_items:
                     paused_items.append(group["name"])
 
-        # 如果整机 FAIL 但 TEST 没有明确失败项，则用 GROUP 兜底定位
         if result == "FAIL" and not fail_items:
             for group in group_info.get("failed_groups", []):
                 if group["name"] not in fail_items:

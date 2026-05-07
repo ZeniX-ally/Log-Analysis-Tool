@@ -5,11 +5,6 @@ import sys
 from datetime import datetime
 from flask import Flask, render_template, jsonify
 
-
-# =========================================================
-# 路径配置
-# =========================================================
-
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(BASE_DIR)
 
@@ -26,11 +21,6 @@ app = Flask(
     template_folder=TEMPLATE_DIR,
     static_folder=STATIC_DIR
 )
-
-
-# =========================================================
-# 时间解析与排序
-# =========================================================
 
 def parse_time_to_timestamp(time_text):
     if not time_text:
@@ -111,11 +101,6 @@ def sort_records_latest_first(records):
         reverse=True
     )
 
-
-# =========================================================
-# Parser 加载
-# =========================================================
-
 def load_parser_function():
     try:
         from parser.fct_parser import load_all_fct_records
@@ -136,11 +121,6 @@ def safe_load_records():
         return records, None
     except Exception as e:
         return [], "解析 XML 失败：" + str(e)
-
-
-# =========================================================
-# SN 查询
-# =========================================================
 
 def find_latest_record_by_sn(records, query_sn):
     if not query_sn:
@@ -185,19 +165,9 @@ def find_latest_record_by_sn(records, query_sn):
     matched_records = sort_records_latest_first(matched_records)
     return matched_records[0]
 
-
-# =========================================================
-# 页面路由
-# =========================================================
-
 @app.route("/")
 def index():
     return render_template("index.html")
-
-
-# =========================================================
-# API：健康检查
-# =========================================================
 
 @app.route("/api/health")
 def health():
@@ -217,11 +187,6 @@ def health():
         "parser_status": parser_status,
         "parser_error": import_error
     })
-
-
-# =========================================================
-# API：SN 查询
-# =========================================================
 
 @app.route("/api/sn/<sn>")
 def query_sn(sn):
@@ -265,11 +230,6 @@ def query_sn(sn):
 
     return jsonify(data)
 
-
-# =========================================================
-# API：全部记录
-# =========================================================
-
 @app.route("/api/all")
 def get_all():
     records, error = safe_load_records()
@@ -278,11 +238,6 @@ def get_all():
         return jsonify([])
 
     return jsonify(records)
-
-
-# =========================================================
-# API：统计
-# =========================================================
 
 @app.route("/api/stats")
 def get_stats():
@@ -370,11 +325,6 @@ def get_stats():
         "top_error": sorted_top_error
     })
 
-
-# =========================================================
-# API：调试
-# =========================================================
-
 @app.route("/api/debug/files")
 def debug_files():
     records, error = safe_load_records()
@@ -427,11 +377,6 @@ def debug_files():
 
     return jsonify(simple_records)
 
-
-# =========================================================
-# 启动入口
-# =========================================================
-
 if __name__ == "__main__":
     print("====================================")
     print("G4.9 FCT Dashboard backend starting")
@@ -450,11 +395,6 @@ if __name__ == "__main__":
         debug=True
     )
 from flask import Flask, render_template, jsonify
-
-
-# =========================================================
-# 路径配置
-# =========================================================
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(BASE_DIR)
