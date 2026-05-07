@@ -8,10 +8,10 @@
     <style>
         :root {
             --bg: #0f172a;
-            --bg-sub: #111827;
             --panel: #1f2937;
-            --panel-soft: #243044;
             --panel-head: #182132;
+            --dialog: #1f2937;
+            --dialog-head: #111827;
 
             --border: #374151;
             --border-light: #4b5563;
@@ -24,7 +24,8 @@
             --green: #22c55e;
             --red: #ef4444;
             --orange: #f97316;
-            --gray: #9ca3af;
+            --yellow: #eab308;
+            --gray: #6b7280;
 
             --table-head: #111827;
             --row-hover: #2b3648;
@@ -51,7 +52,7 @@
         }
 
         .topbar-inner {
-            max-width: 1400px;
+            max-width: 1500px;
             margin: 0 auto;
             display: flex;
             justify-content: space-between;
@@ -64,10 +65,9 @@
             margin: 0;
             font-size: 22px;
             font-weight: 600;
-            letter-spacing: 0.2px;
         }
 
-        .topbar .subtitle {
+        .subtitle {
             margin-top: 4px;
             color: var(--text-sub);
             font-size: 13px;
@@ -93,16 +93,69 @@
         }
 
         .layout {
-            max-width: 1400px;
+            max-width: 1500px;
             margin: 20px auto;
             padding: 0 20px 30px;
         }
 
         .summary-grid {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
+            grid-template-columns: repeat(6, minmax(0, 1fr));
             gap: 14px;
             margin-bottom: 16px;
+        }
+
+        .summary-card {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 16px;
+            min-height: 96px;
+            border-left: 4px solid var(--blue);
+        }
+
+        .summary-card.pass {
+            border-left-color: var(--green);
+        }
+
+        .summary-card.fail {
+            border-left-color: var(--red);
+        }
+
+        .summary-card.paused {
+            border-left-color: var(--yellow);
+        }
+
+        .summary-card.interrupted {
+            border-left-color: var(--orange);
+        }
+
+        .summary-card.error {
+            border-left-color: var(--orange);
+        }
+
+        .summary-title {
+            color: var(--text-sub);
+            font-size: 13px;
+            margin-bottom: 10px;
+        }
+
+        .summary-value {
+            font-size: 30px;
+            font-weight: 700;
+            line-height: 1;
+        }
+
+        .main-grid {
+            display: grid;
+            grid-template-columns: minmax(720px, 1.35fr) minmax(360px, 0.65fr);
+            gap: 16px;
+            align-items: start;
+        }
+
+        .left-column,
+        .right-column {
+            min-width: 0;
         }
 
         .card {
@@ -139,55 +192,28 @@
             padding: 16px;
         }
 
-        .summary-card {
-            padding: 16px;
-            min-height: 96px;
-            border-left: 4px solid var(--blue);
-            background: var(--panel);
-        }
-
-        .summary-card.pass {
-            border-left-color: var(--green);
-        }
-
-        .summary-card.fail {
-            border-left-color: var(--red);
-        }
-
-        .summary-card.error {
-            border-left-color: var(--orange);
-        }
-
-        .summary-title {
-            color: var(--text-sub);
-            font-size: 13px;
-            margin-bottom: 10px;
-        }
-
-        .summary-value {
-            font-size: 32px;
-            font-weight: 700;
-            line-height: 1;
-        }
-
         .blue {
             color: var(--blue);
         }
 
         .green {
-            color: var(--green);
+            color: #86efac;
         }
 
         .red {
-            color: var(--red);
+            color: #fca5a5;
         }
 
         .orange {
-            color: var(--orange);
+            color: #fdba74;
+        }
+
+        .yellow {
+            color: #fde68a;
         }
 
         .gray {
-            color: var(--gray);
+            color: var(--text-sub);
         }
 
         .search-row {
@@ -199,8 +225,8 @@
 
         input {
             height: 38px;
-            width: 340px;
-            max-width: 100%;
+            width: 100%;
+            max-width: 360px;
             padding: 0 10px;
             border: 1px solid var(--border-light);
             border-radius: 3px;
@@ -250,28 +276,12 @@
             margin-top: 10px;
             color: var(--text-sub);
             font-size: 12px;
-        }
-
-        .result-grid {
-            display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 8px 24px;
-            margin-bottom: 12px;
-        }
-
-        .info-row {
-            line-height: 1.8;
-        }
-
-        .info-label {
-            display: inline-block;
-            min-width: 82px;
-            color: var(--text-sub);
+            line-height: 1.6;
         }
 
         .badge {
             display: inline-block;
-            min-width: 70px;
+            min-width: 92px;
             text-align: center;
             padding: 3px 8px;
             border-radius: 3px;
@@ -289,59 +299,26 @@
             background: var(--red);
         }
 
+        .badge-paused {
+            background: var(--yellow);
+            color: #422006;
+        }
+
+        .badge-interrupted {
+            background: var(--orange);
+        }
+
         .badge-error {
             background: var(--orange);
         }
 
         .badge-gray {
-            background: #6b7280;
-        }
-
-        .fail-box {
-            border: 1px solid rgba(239, 68, 68, 0.45);
-            background: rgba(127, 29, 29, 0.28);
-            padding: 10px 12px;
-            margin-top: 12px;
-            border-radius: 3px;
-        }
-
-        .fail-box-title {
-            font-weight: 600;
-            color: #fca5a5;
-            margin-bottom: 6px;
-        }
-
-        .fail-list {
-            margin: 0;
-            padding-left: 20px;
-            color: #fca5a5;
-        }
-
-        .fail-list li {
-            margin: 4px 0;
-        }
-
-        .pass-message {
-            border: 1px solid rgba(34, 197, 94, 0.45);
-            background: rgba(20, 83, 45, 0.28);
-            color: #86efac;
-            padding: 10px 12px;
-            border-radius: 3px;
-            margin-top: 12px;
-            font-weight: 600;
-        }
-
-        .table-wrap {
-            width: 100%;
-            overflow-x: auto;
-            border: 1px solid var(--border);
-            border-radius: 3px;
+            background: var(--gray);
         }
 
         table {
             width: 100%;
             border-collapse: collapse;
-            min-width: 800px;
         }
 
         th {
@@ -383,59 +360,283 @@
             font-weight: 600;
         }
 
+        .item-paused {
+            color: #fde68a;
+            font-weight: 600;
+        }
+
+        .item-interrupted {
+            color: #fdba74;
+            font-weight: 600;
+        }
+
         .item-error {
             color: #fdba74;
             font-weight: 600;
         }
 
-        .top-fail-row {
-            display: flex;
-            justify-content: space-between;
-            gap: 12px;
+        .empty,
+        .loading {
+            color: var(--text-sub);
             padding: 8px 0;
-            border-bottom: 1px solid var(--border);
         }
 
-        .top-fail-row:last-child {
-            border-bottom: none;
+        .top-fail-card {
+            margin-bottom: 16px;
+        }
+
+        .top-fail-list {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 12px;
+        }
+
+        .top-fail-row {
+            border: 1px solid var(--border);
+            background: #111827;
+            border-left: 4px solid var(--red);
+            border-radius: 3px;
+            padding: 12px;
+            min-height: 86px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            gap: 8px;
+        }
+
+        .top-fail-rank {
+            color: var(--text-sub);
+            font-size: 12px;
         }
 
         .top-fail-name {
             color: var(--text-main);
+            font-weight: 600;
+            word-break: break-all;
+            line-height: 1.4;
         }
 
         .top-fail-count {
+            color: #fca5a5;
             font-weight: 700;
+            font-size: 18px;
+            text-align: right;
+        }
+
+        .recent-card {
+            height: 680px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .recent-card .card-body {
+            flex: 1;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .recent-scroll {
+            flex: 1;
+            min-height: 0;
+            overflow-y: auto;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            border-radius: 3px;
+        }
+
+        .recent-table {
+            min-width: 920px;
+        }
+
+        .recent-table thead th {
+            position: sticky;
+            top: 0;
+            z-index: 3;
+            background: var(--table-head);
+        }
+
+        .modal-backdrop {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 1000;
+            background: rgba(2, 6, 23, 0.72);
+            padding: 28px;
+        }
+
+        .modal-backdrop.show {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-window {
+            width: min(1180px, 96vw);
+            max-height: 90vh;
+            background: var(--dialog);
+            border: 1px solid var(--border-light);
+            border-radius: 6px;
+            box-shadow: 0 24px 70px rgba(0, 0, 0, 0.55);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .modal-header {
+            background: var(--dialog-head);
+            border-bottom: 1px solid var(--border);
+            padding: 12px 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .modal-title {
+            margin: 0;
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .modal-close {
+            min-width: 34px;
+            height: 32px;
+            padding: 0 10px;
+            border: 1px solid var(--border-light);
+            background: transparent;
+            color: var(--text-main);
+            border-radius: 3px;
+            cursor: pointer;
+        }
+
+        .modal-close:hover {
+            background: #374151;
+        }
+
+        .modal-body {
+            padding: 16px;
+            overflow-y: auto;
+        }
+
+        .dialog-result-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 8px 24px;
+            margin-bottom: 12px;
+        }
+
+        .info-row {
+            line-height: 1.8;
+            word-break: break-all;
+        }
+
+        .info-label {
+            display: inline-block;
+            min-width: 90px;
+            color: var(--text-sub);
+        }
+
+        .fail-box {
+            border: 1px solid rgba(239, 68, 68, 0.45);
+            background: rgba(127, 29, 29, 0.28);
+            padding: 10px 12px;
+            margin-top: 12px;
+            border-radius: 3px;
+        }
+
+        .fail-box-title {
+            font-weight: 600;
+            color: #fca5a5;
+            margin-bottom: 6px;
+        }
+
+        .paused-box {
+            border: 1px solid rgba(234, 179, 8, 0.45);
+            background: rgba(113, 63, 18, 0.28);
+            padding: 10px 12px;
+            margin-top: 12px;
+            border-radius: 3px;
+        }
+
+        .paused-box-title {
+            font-weight: 600;
+            color: #fde68a;
+            margin-bottom: 6px;
+        }
+
+        .interrupted-box {
+            border: 1px solid rgba(249, 115, 22, 0.45);
+            background: rgba(124, 45, 18, 0.28);
+            padding: 10px 12px;
+            margin-top: 12px;
+            border-radius: 3px;
+        }
+
+        .interrupted-box-title {
+            font-weight: 600;
+            color: #fdba74;
+            margin-bottom: 6px;
+        }
+
+        .fail-list,
+        .paused-list,
+        .interrupted-list {
+            margin: 0;
+            padding-left: 20px;
+        }
+
+        .fail-list {
             color: #fca5a5;
         }
 
-        .empty {
-            color: var(--text-sub);
-            padding: 8px 0;
+        .paused-list {
+            color: #fde68a;
         }
 
-        .loading {
-            color: var(--text-sub);
+        .interrupted-list {
+            color: #fdba74;
         }
 
-        .new-mark {
-            display: inline-block;
-            margin-left: 6px;
-            padding: 1px 5px;
+        .fail-list li,
+        .paused-list li,
+        .interrupted-list li {
+            margin: 4px 0;
+        }
+
+        .pass-message {
+            border: 1px solid rgba(34, 197, 94, 0.45);
+            background: rgba(20, 83, 45, 0.28);
+            color: #86efac;
+            padding: 10px 12px;
             border-radius: 3px;
-            background: rgba(59, 130, 246, 0.18);
-            color: #93c5fd;
-            font-size: 11px;
+            margin-top: 12px;
             font-weight: 600;
-            border: 1px solid rgba(147, 197, 253, 0.25);
         }
 
-        .row-new td {
-            background: rgba(30, 64, 175, 0.28);
+        .raw-items-scroll {
+            max-height: 420px;
+            overflow-y: auto;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            border-radius: 3px;
+        }
+
+        .raw-items-table {
+            width: 100%;
+            min-width: 980px;
+            border-collapse: collapse;
+        }
+
+        .raw-items-table thead th {
+            position: sticky;
+            top: 0;
+            z-index: 2;
+            background: var(--table-head);
         }
 
         .footer {
-            max-width: 1400px;
+            max-width: 1500px;
             margin: 0 auto;
             padding: 8px 20px 24px;
             color: var(--text-light);
@@ -443,12 +644,58 @@
             text-align: right;
         }
 
-        @media (max-width: 1000px) {
+        .modal-body::-webkit-scrollbar,
+        .recent-scroll::-webkit-scrollbar,
+        .raw-items-scroll::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+
+        .modal-body::-webkit-scrollbar-track,
+        .recent-scroll::-webkit-scrollbar-track,
+        .raw-items-scroll::-webkit-scrollbar-track {
+            background: #111827;
+        }
+
+        .modal-body::-webkit-scrollbar-thumb,
+        .recent-scroll::-webkit-scrollbar-thumb,
+        .raw-items-scroll::-webkit-scrollbar-thumb {
+            background: #4b5563;
+            border-radius: 4px;
+        }
+
+        .modal-body::-webkit-scrollbar-thumb:hover,
+        .recent-scroll::-webkit-scrollbar-thumb:hover,
+        .raw-items-scroll::-webkit-scrollbar-thumb:hover {
+            background: #6b7280;
+        }
+
+        @media (max-width: 1300px) {
+            .summary-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+
+            .top-fail-list {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 1200px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .recent-card {
+                height: 560px;
+            }
+        }
+
+        @media (max-width: 800px) {
             .summary-grid {
                 grid-template-columns: repeat(2, 1fr);
             }
 
-            .result-grid {
+            .dialog-result-grid {
                 grid-template-columns: 1fr;
             }
         }
@@ -469,10 +716,28 @@
             input,
             button {
                 width: 100%;
+                max-width: none;
             }
 
             .card-body {
                 padding: 12px;
+            }
+
+            .recent-card {
+                height: 480px;
+            }
+
+            .modal-backdrop {
+                padding: 10px;
+            }
+
+            .modal-window {
+                width: 100%;
+                max-height: 94vh;
+            }
+
+            .raw-items-scroll {
+                max-height: 320px;
             }
         }
     </style>
@@ -483,8 +748,8 @@
 <div class="topbar">
     <div class="topbar-inner">
         <div>
-            <h1>G4.9 FCT 不良面板</h1>
-            <div class="subtitle">FCT XML 解析 / 最近记录 / FAIL 项追踪 / Dark Industrial UI</div>
+            <h1>G4.9 FCT Fail Dashboard</h1>
+            <div class="subtitle">FCT XML 解析 / 最近记录 / 弹窗查看详情 / Dark Industrial UI</div>
         </div>
 
         <div class="system-status">
@@ -497,69 +762,41 @@
 <div class="layout">
 
     <div class="summary-grid">
-        <div class="card summary-card">
+        <div class="summary-card">
             <div class="summary-title">总测试记录</div>
             <div class="summary-value blue" id="totalCount">-</div>
         </div>
 
-        <div class="card summary-card pass">
+        <div class="summary-card pass">
             <div class="summary-title">PASS 数量</div>
             <div class="summary-value green" id="passCount">-</div>
         </div>
 
-        <div class="card summary-card fail">
+        <div class="summary-card fail">
             <div class="summary-title">FAIL 数量</div>
             <div class="summary-value red" id="failCount">-</div>
         </div>
 
-        <div class="card summary-card error">
+        <div class="summary-card paused">
+            <div class="summary-title">暂停数量</div>
+            <div class="summary-value yellow" id="pausedCount">-</div>
+        </div>
+
+        <div class="summary-card interrupted">
+            <div class="summary-title">中断数量</div>
+            <div class="summary-value orange" id="interruptedCount">-</div>
+        </div>
+
+        <div class="summary-card error">
             <div class="summary-title">解析异常</div>
             <div class="summary-value orange" id="parseErrorCount">-</div>
         </div>
     </div>
 
-    <div class="card">
+    <div class="card top-fail-card">
         <div class="card-header">
-            <h2 class="card-title">SN 查询</h2>
-            <span class="card-note">输入 SN 查询单台 FCT 测试结果</span>
-        </div>
-
-        <div class="card-body">
-            <div class="search-row">
-                <input id="snInput" placeholder="输入 SN，例如 G49-001" onkeydown="handleEnter(event)">
-                <button onclick="searchSN()">查询</button>
-                <button class="btn-secondary" onclick="clearResult()">清空</button>
-            </div>
-
-            <div class="hint">
-                说明：点击下方“新加入 XML 文件”或“最近测试记录”中的任意行，也可以自动查询该 SN。
-            </div>
-        </div>
-    </div>
-
-    <div class="card" id="resultCard" style="display: none;">
-        <div class="card-header">
-            <h2 class="card-title">查询结果</h2>
-        </div>
-
-        <div class="card-body" id="resultArea"></div>
-    </div>
-
-    <div class="card">
-        <div class="card-header">
-            <h2 class="card-title">新上传 XML 表单</h2>
-            <span class="card-note">按文件上传 / 修改时间倒序，自动刷新</span>
-        </div>
-
-        <div class="card-body" id="newXmlArea">
-            <div class="loading">加载中...</div>
-        </div>
-    </div>
-
-    <div class="card">
-        <div class="card-header">
-            <h2 class="card-title">FAIL项排行</h2>
-            <span class="card-note">按 FAIL 次数排序</span>
+            <h2 class="card-title">TOP FAIL 项</h2>
+            <span class="card-note">仅显示最容易失败的前三项</span>
         </div>
 
         <div class="card-body" id="topFailArea">
@@ -567,27 +804,64 @@
         </div>
     </div>
 
-    <div class="card">
-        <div class="card-header">
-            <h2 class="card-title">最近测试记录</h2>
-            <span class="card-note">最近 20 条 XML 解析结果</span>
+    <div class="main-grid">
+
+        <div class="left-column">
+            <div class="card recent-card">
+                <div class="card-header">
+                    <h2 class="card-title">最近测试记录</h2>
+                    <span class="card-note">点击任意记录，在弹窗中查看详情</span>
+                </div>
+
+                <div class="card-body" id="recentRecordsArea">
+                    <div class="loading">加载中...</div>
+                </div>
+            </div>
         </div>
 
-        <div class="card-body" id="recentRecordsArea">
-            <div class="loading">加载中...</div>
+        <div class="right-column">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">SN 查询</h2>
+                    <span class="card-note">查询结果将在弹窗中显示</span>
+                </div>
+
+                <div class="card-body">
+                    <div class="search-row">
+                        <input id="snInput" placeholder="输入完整 SN 或后 8/10/12 位，例如 K50400241" onkeydown="handleEnter(event)">
+                        <button onclick="searchSN()">查询</button>
+                        <button class="btn-secondary" onclick="clearInput()">清空</button>
+                    </div>
+
+                    <div class="hint">
+                        主页面只显示列表和统计。点击记录或查询 SN 后，会弹出详情对话框。
+                    </div>
+                </div>
+            </div>
         </div>
+
     </div>
 
 </div>
 
 <div class="footer">
-    G4.9 FCT Fail Dashboard · Flask + XML Parser · Dark Industrial Minimal UI
+    G4.9 FCT Fail Dashboard · Flask + XML Parser · Dialog Detail Layout
+</div>
+
+<div class="modal-backdrop" id="detailModalBackdrop">
+    <div class="modal-window" role="dialog" aria-modal="true">
+        <div class="modal-header">
+            <h2 class="modal-title" id="modalTitle">测试详情</h2>
+            <button class="modal-close" onclick="closeDetailModal()">关闭</button>
+        </div>
+
+        <div class="modal-body" id="modalBody">
+            <div class="loading">等待查询...</div>
+        </div>
+    </div>
 </div>
 
 <script>
-    let knownXmlFiles = new Set();
-    let firstLoadDone = false;
-
     function updateLastRefreshTime() {
         const now = new Date();
         const text = now.toLocaleString("zh-CN", { hour12: false });
@@ -609,6 +883,8 @@
             setText("totalCount", data.total);
             setText("passCount", data.pass);
             setText("failCount", data.fail);
+            setText("pausedCount", data.paused);
+            setText("interruptedCount", data.interrupted);
             setText("parseErrorCount", data.parse_error);
 
             renderTopFail(data.top_fail || {});
@@ -620,16 +896,20 @@
 
     function renderTopFail(topFail) {
         const area = document.getElementById("topFailArea");
-        const entries = Object.entries(topFail);
+        let entries = Object.entries(topFail);
 
         if (entries.length === 0) {
             area.innerHTML = '<div class="empty">当前暂无 FAIL 项统计。</div>';
             return;
         }
 
-        entries.sort((a, b) => b[1] - a[1]);
+        entries.sort(function(a, b) {
+            return b[1] - a[1];
+        });
 
-        let html = "";
+        entries = entries.slice(0, 3);
+
+        let html = '<div class="top-fail-list">';
 
         entries.forEach(function(entry, index) {
             const itemName = entry[0];
@@ -637,51 +917,89 @@
 
             html += `
                 <div class="top-fail-row">
-                    <span class="top-fail-name">${index + 1}. ${escapeHtml(itemName)}</span>
-                    <span class="top-fail-count">${count}</span>
+                    <div class="top-fail-rank">TOP ${index + 1}</div>
+                    <div class="top-fail-name">${escapeHtml(itemName)}</div>
+                    <div class="top-fail-count">${count}</div>
                 </div>
             `;
         });
 
+        html += '</div>';
         area.innerHTML = html;
     }
 
     async function searchSN() {
         const sn = document.getElementById("snInput").value.trim();
-        const resultCard = document.getElementById("resultCard");
-        const resultArea = document.getElementById("resultArea");
 
         if (!sn) {
             alert("请输入 SN");
             return;
         }
 
-        resultCard.style.display = "block";
-        resultArea.innerHTML = '<div class="loading">查询中...</div>';
+        openDetailModal("查询中...", '<div class="loading">查询中...</div>');
 
         try {
             const response = await fetch("/api/sn/" + encodeURIComponent(sn));
             const data = await response.json();
-            renderResult(data);
+            renderDetailModal(data);
         } catch (error) {
-            resultArea.innerHTML = '<div class="red">查询失败：' + escapeHtml(error) + '</div>';
+            openDetailModal("查询失败", '<div class="red">查询失败：' + escapeHtml(error) + '</div>');
         }
     }
 
-    function renderResult(data) {
-        const resultArea = document.getElementById("resultArea");
+    async function openRecordDetail(sn) {
+        if (!sn || sn.startsWith("PARSE_ERROR_")) {
+            return;
+        }
 
+        document.getElementById("snInput").value = sn;
+
+        openDetailModal("查询中...", '<div class="loading">查询中...</div>');
+
+        try {
+            const response = await fetch("/api/sn/" + encodeURIComponent(sn));
+            const data = await response.json();
+            renderDetailModal(data);
+        } catch (error) {
+            openDetailModal("查询失败", '<div class="red">查询失败：' + escapeHtml(error) + '</div>');
+        }
+    }
+
+    function openDetailModal(title, bodyHtml) {
+        document.getElementById("modalTitle").innerText = title || "测试详情";
+        document.getElementById("modalBody").innerHTML = bodyHtml || "";
+        document.getElementById("detailModalBackdrop").classList.add("show");
+        document.body.style.overflow = "hidden";
+    }
+
+    function closeDetailModal() {
+        document.getElementById("detailModalBackdrop").classList.remove("show");
+        document.body.style.overflow = "";
+    }
+
+    function renderDetailModal(data) {
+        const title = data.sn ? "测试详情 - " + data.sn : "测试详情";
+        document.getElementById("modalTitle").innerText = title;
+        document.getElementById("modalBody").innerHTML = buildDetailHtml(data);
+    }
+
+    function buildDetailHtml(data) {
         let badgeClass = "badge-gray";
+
         if (data.result === "PASS") {
             badgeClass = "badge-pass";
         } else if (data.result === "FAIL") {
             badgeClass = "badge-fail";
-        } else if (data.result === "PARSE_ERROR") {
+        } else if (data.result === "PAUSED") {
+            badgeClass = "badge-paused";
+        } else if (data.result === "INTERRUPTED") {
+            badgeClass = "badge-interrupted";
+        } else if (data.result === "ERROR" || data.result === "PARSE_ERROR") {
             badgeClass = "badge-error";
         }
 
         let html = `
-            <div class="result-grid">
+            <div class="dialog-result-grid">
                 <div class="info-row">
                     <span class="info-label">SN：</span>
                     <b>${escapeHtml(data.sn || "-")}</b>
@@ -714,6 +1032,42 @@
             </div>
         `;
 
+        if (data.total_tests !== undefined) {
+            html += `
+                <div class="dialog-result-grid" style="margin-top: 8px;">
+                    <div class="info-row">
+                        <span class="info-label">测试总数：</span>
+                        <b>${escapeHtml(data.total_tests)}</b>
+                    </div>
+
+                    <div class="info-row">
+                        <span class="info-label">失败数量：</span>
+                        <b class="red">${escapeHtml(data.failed_tests ?? 0)}</b>
+                    </div>
+
+                    <div class="info-row">
+                        <span class="info-label">通过数量：</span>
+                        <b class="green">${escapeHtml(data.passed_tests ?? 0)}</b>
+                    </div>
+
+                    <div class="info-row">
+                        <span class="info-label">暂停数量：</span>
+                        <b class="yellow">${escapeHtml(data.paused_tests ?? 0)}</b>
+                    </div>
+
+                    <div class="info-row">
+                        <span class="info-label">中断数量：</span>
+                        <b class="orange">${escapeHtml(data.interrupted_tests ?? 0)}</b>
+                    </div>
+
+                    <div class="info-row">
+                        <span class="info-label">跳过数量：</span>
+                        <b class="gray">${escapeHtml(data.skipped_tests ?? 0)}</b>
+                    </div>
+                </div>
+            `;
+        }
+
         if (data.message) {
             html += '<div class="empty">' + escapeHtml(data.message) + '</div>';
         }
@@ -722,129 +1076,90 @@
             html += '<div class="orange">解析错误：' + escapeHtml(data.error) + '</div>';
         }
 
-        if (data.fail_items && data.fail_items.length > 0) {
-            html += `
-                <div class="fail-box">
-                    <div class="fail-box-title">失败项</div>
-                    <ul class="fail-list">
-            `;
+        html += renderIssueBox("失败项", data.fail_items, "fail-box", "fail-box-title", "fail-list");
+        html += renderIssueBox("暂停项", data.paused_items, "paused-box", "paused-box-title", "paused-list");
+        html += renderIssueBox("中断项", data.interrupted_items, "interrupted-box", "interrupted-box-title", "interrupted-list");
 
-            data.fail_items.forEach(function(item) {
-                html += '<li>' + escapeHtml(item) + '</li>';
-            });
-
-            html += `
-                    </ul>
-                </div>
-            `;
-        } else if (data.result === "PASS") {
+        if (
+            data.result === "PASS" &&
+            (!data.fail_items || data.fail_items.length === 0) &&
+            (!data.paused_items || data.paused_items.length === 0) &&
+            (!data.interrupted_items || data.interrupted_items.length === 0)
+        ) {
             html += '<div class="pass-message">该 SN 当前 FCT 测试通过。</div>';
         }
 
         if (data.raw_items && data.raw_items.length > 0) {
-            html += `
-                <h3 style="margin-top: 18px; font-size: 15px;">原始测试项明细</h3>
-                <div class="table-wrap">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>#</th>
-                                <th>测试项</th>
-                                <th>结果</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-            `;
-
-            data.raw_items.forEach(function(item, index) {
-                const resultClass = item.result === "PASS"
-                    ? "item-pass"
-                    : item.result === "FAIL"
-                        ? "item-fail"
-                        : "gray";
-
-                html += `
-                    <tr>
-                        <td>${index + 1}</td>
-                        <td>${escapeHtml(item.name || "-")}</td>
-                        <td class="${resultClass}">${escapeHtml(item.result || "-")}</td>
-                    </tr>
-                `;
-            });
-
-            html += `
-                        </tbody>
-                    </table>
-                </div>
-            `;
+            html += renderRawItems(data.raw_items);
         }
 
-        resultArea.innerHTML = html;
+        return html;
     }
 
-    async function loadNewXmlList() {
-        const area = document.getElementById("newXmlArea");
-
-        try {
-            const response = await fetch("/api/recent_xml");
-            const data = await response.json();
-            renderNewXmlList(data);
-        } catch (error) {
-            area.innerHTML = '<div class="empty">新 XML 文件列表加载失败：' + escapeHtml(error) + '</div>';
-        }
-    }
-
-    function renderNewXmlList(records) {
-        const area = document.getElementById("newXmlArea");
-
-        if (!records || records.length === 0) {
-            area.innerHTML = '<div class="empty">当前 logs 目录下暂无 XML 文件。</div>';
-            return;
+    function renderIssueBox(title, items, boxClass, titleClass, listClass) {
+        if (!items || items.length === 0) {
+            return "";
         }
 
         let html = `
-            <div class="table-wrap">
-                <table>
+            <div class="${boxClass}">
+                <div class="${titleClass}">${title}</div>
+                <ul class="${listClass}">
+        `;
+
+        items.forEach(function(item) {
+            html += '<li>' + escapeHtml(item) + '</li>';
+        });
+
+        html += `
+                </ul>
+            </div>
+        `;
+
+        return html;
+    }
+
+    function renderRawItems(rawItems) {
+        let html = `
+            <h3 style="margin-top: 18px; font-size: 15px;">
+                原始测试项明细
+                <span style="color: var(--text-sub); font-size: 12px; font-weight: normal;">
+                    （共 ${rawItems.length} 项，弹窗内滚动查看）
+                </span>
+            </h3>
+
+            <div class="raw-items-scroll">
+                <table class="raw-items-table">
                     <thead>
                         <tr>
                             <th>#</th>
-                            <th>XML 文件</th>
-                            <th>SN</th>
-                            <th>站点</th>
+                            <th>测试项</th>
                             <th>结果</th>
-                            <th>FAIL 项</th>
-                            <th>文件时间</th>
+                            <th>测试值</th>
+                            <th>下限</th>
+                            <th>上限</th>
+                            <th>单位</th>
+                            <th>规则</th>
                         </tr>
                     </thead>
                     <tbody>
         `;
 
-        records.forEach(function(record, index) {
-            const sourceFile = record.source_file || "";
-            const isNew = firstLoadDone && sourceFile && !knownXmlFiles.has(sourceFile);
-            const resultClass = getResultClass(record.result);
-            const failItems = record.fail_items && record.fail_items.length > 0
-                ? record.fail_items.join(", ")
-                : "-";
+        rawItems.forEach(function(item, index) {
+            const resultClass = getResultClass(item.result);
 
             html += `
-                <tr class="${isNew ? "row-new" : ""}" onclick="quickSearchSN('${escapeAttr(record.sn || "")}')">
+                <tr>
                     <td>${index + 1}</td>
-                    <td>
-                        <b>${escapeHtml(sourceFile || "-")}</b>
-                        ${isNew ? '<span class="new-mark">NEW</span>' : ""}
-                    </td>
-                    <td>${escapeHtml(record.sn || "-")}</td>
-                    <td>${escapeHtml(record.station || "FCT")}</td>
-                    <td class="${resultClass}">${escapeHtml(record.result || "-")}</td>
-                    <td>${escapeHtml(failItems)}</td>
-                    <td>${escapeHtml(record.file_mtime || "-")}</td>
+                    <td>${escapeHtml(item.name || "-")}</td>
+                    <td class="${resultClass}">${escapeHtml(item.result || "-")}</td>
+                    <td>${escapeHtml(item.value || "-")}</td>
+                    <td>${escapeHtml(item.lo_limit || "-")}</td>
+                    <td>${escapeHtml(item.hi_limit || "-")}</td>
+                    <td>${escapeHtml(item.unit || "-")}</td>
+                    <td>${escapeHtml(item.rule || "-")}</td>
                 </tr>
             `;
-
-            if (sourceFile) {
-                knownXmlFiles.add(sourceFile);
-            }
         });
 
         html += `
@@ -853,8 +1168,7 @@
             </div>
         `;
 
-        firstLoadDone = true;
-        area.innerHTML = html;
+        return html;
     }
 
     async function loadRecentRecords() {
@@ -877,18 +1191,17 @@
             return;
         }
 
-        const latestRecords = records.slice(0, 20);
+        const latestRecords = records.slice(0, 80);
 
         let html = `
-            <div class="table-wrap">
-                <table>
+            <div class="recent-scroll">
+                <table class="recent-table">
                     <thead>
                         <tr>
                             <th>#</th>
                             <th>SN</th>
-                            <th>站点</th>
                             <th>结果</th>
-                            <th>失败项</th>
+                            <th>失败 / 中断 / 暂停项</th>
                             <th>测试时间</th>
                             <th>XML 文件</th>
                             <th>文件时间</th>
@@ -899,17 +1212,25 @@
 
         latestRecords.forEach(function(record, index) {
             const resultClass = getResultClass(record.result);
-            const failItems = record.fail_items && record.fail_items.length > 0
-                ? record.fail_items.join(", ")
-                : "-";
+
+            let issueItems = "-";
+
+            if (record.fail_items && record.fail_items.length > 0) {
+                issueItems = record.fail_items.join(", ");
+            } else if (record.interrupted_items && record.interrupted_items.length > 0) {
+                issueItems = record.interrupted_items.join(", ");
+            } else if (record.paused_items && record.paused_items.length > 0) {
+                issueItems = record.paused_items.join(", ");
+            } else if (record.error_items && record.error_items.length > 0) {
+                issueItems = record.error_items.join(", ");
+            }
 
             html += `
-                <tr onclick="quickSearchSN('${escapeAttr(record.sn || "")}')">
+                <tr class="record-row" data-sn="${escapeHtml(record.sn || "")}">
                     <td>${index + 1}</td>
                     <td><b>${escapeHtml(record.sn || "-")}</b></td>
-                    <td>${escapeHtml(record.station || "FCT")}</td>
                     <td class="${resultClass}">${escapeHtml(record.result || "-")}</td>
-                    <td>${escapeHtml(failItems)}</td>
+                    <td>${escapeHtml(issueItems)}</td>
                     <td>${escapeHtml(record.time || "-")}</td>
                     <td>${escapeHtml(record.source_file || "-")}</td>
                     <td>${escapeHtml(record.file_mtime || "-")}</td>
@@ -924,6 +1245,18 @@
         `;
 
         area.innerHTML = html;
+        bindRecentRecordEvents();
+    }
+
+    function bindRecentRecordEvents() {
+        const rows = document.querySelectorAll(".record-row");
+
+        rows.forEach(function(row) {
+            row.addEventListener("click", function() {
+                const sn = row.dataset.sn || "";
+                openRecordDetail(sn);
+            });
+        });
     }
 
     function getResultClass(result) {
@@ -935,31 +1268,23 @@
             return "item-fail";
         }
 
-        if (result === "PARSE_ERROR") {
+        if (result === "PAUSED") {
+            return "item-paused";
+        }
+
+        if (result === "INTERRUPTED") {
+            return "item-interrupted";
+        }
+
+        if (result === "ERROR" || result === "PARSE_ERROR") {
             return "item-error";
         }
 
         return "gray";
     }
 
-    function quickSearchSN(sn) {
-        if (!sn || sn.startsWith("PARSE_ERROR_")) {
-            return;
-        }
-
-        document.getElementById("snInput").value = sn;
-        searchSN();
-
-        window.scrollTo({
-            top: 0,
-            behavior: "smooth"
-        });
-    }
-
-    function clearResult() {
+    function clearInput() {
         document.getElementById("snInput").value = "";
-        document.getElementById("resultCard").style.display = "none";
-        document.getElementById("resultArea").innerHTML = "";
     }
 
     function handleEnter(event) {
@@ -971,7 +1296,6 @@
     async function refreshAll() {
         await Promise.all([
             loadStats(),
-            loadNewXmlList(),
             loadRecentRecords()
         ]);
 
@@ -987,15 +1311,6 @@
             .replaceAll("'", "&#039;");
     }
 
-    function escapeAttr(value) {
-        return String(value)
-            .replaceAll("\\", "\\\\")
-            .replaceAll("'", "\\'")
-            .replaceAll('"', "&quot;")
-            .replaceAll("<", "&lt;")
-            .replaceAll(">", "&gt;");
-    }
-
     window.onload = function () {
         refreshAll();
 
@@ -1003,6 +1318,18 @@
             refreshAll();
         }, 5000);
     };
+
+    document.addEventListener("keydown", function(event) {
+        if (event.key === "Escape") {
+            closeDetailModal();
+        }
+    });
+
+    document.getElementById("detailModalBackdrop").addEventListener("click", function(event) {
+        if (event.target.id === "detailModalBackdrop") {
+            closeDetailModal();
+        }
+    });
 </script>
 
 </body>
