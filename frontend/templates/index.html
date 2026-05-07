@@ -44,11 +44,9 @@
             font-size: 14px;
         }
 
+        /* 隐藏最顶部标题栏 */
         .topbar {
-            background: #020617;
-            color: var(--text-main);
-            padding: 14px 24px;
-            border-bottom: 3px solid var(--blue);
+            display: none;
         }
 
         .topbar-inner {
@@ -94,7 +92,7 @@
 
         .layout {
             max-width: 1500px;
-            margin: 20px auto;
+            margin: 12px auto 20px;
             padding: 0 20px 30px;
         }
 
@@ -144,18 +142,6 @@
             font-size: 30px;
             font-weight: 700;
             line-height: 1;
-        }
-
-        .main-grid {
-            display: grid;
-            grid-template-columns: minmax(720px, 1.35fr) minmax(360px, 0.65fr);
-            gap: 16px;
-            align-items: start;
-        }
-
-        .left-column,
-        .right-column {
-            min-width: 0;
         }
 
         .card {
@@ -225,8 +211,8 @@
 
         input {
             height: 38px;
-            width: 100%;
-            max-width: 360px;
+            width: 420px;
+            max-width: 100%;
             padding: 0 10px;
             border: 1px solid var(--border-light);
             border-radius: 3px;
@@ -424,7 +410,7 @@
         }
 
         .recent-card {
-            height: 680px;
+            height: 620px;
             display: flex;
             flex-direction: column;
         }
@@ -446,7 +432,7 @@
         }
 
         .recent-table {
-            min-width: 920px;
+            min-width: 980px;
         }
 
         .recent-table thead th {
@@ -680,16 +666,6 @@
             }
         }
 
-        @media (max-width: 1200px) {
-            .main-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .recent-card {
-                height: 560px;
-            }
-        }
-
         @media (max-width: 800px) {
             .summary-grid {
                 grid-template-columns: repeat(2, 1fr);
@@ -703,10 +679,6 @@
         @media (max-width: 600px) {
             .layout {
                 padding: 0 12px 24px;
-            }
-
-            .topbar {
-                padding: 12px 14px;
             }
 
             .summary-grid {
@@ -749,7 +721,7 @@
     <div class="topbar-inner">
         <div>
             <h1>G4.9 FCT Fail Dashboard</h1>
-            <div class="subtitle">FCT XML 解析 / 最近记录 / 弹窗查看详情 / Dark Industrial UI</div>
+            <div class="subtitle">FCT XML 解析 / SN 查询 / TOP FAIL / 最近测试记录 / 弹窗详情</div>
         </div>
 
         <div class="system-status">
@@ -793,6 +765,25 @@
         </div>
     </div>
 
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">SN 查询</h2>
+            <span class="card-note">查询结果将在弹窗中显示</span>
+        </div>
+
+        <div class="card-body">
+            <div class="search-row">
+                <input id="snInput" placeholder="输入完整 SN 或后 8/10/12 位，例如 K50400241" onkeydown="handleEnter(event)">
+                <button onclick="searchSN()">查询</button>
+                <button class="btn-secondary" onclick="clearInput()">清空</button>
+            </div>
+
+            <div class="hint">
+                点击“查询”后会弹出测试详情；也可以点击下方“最近测试记录”中的任意行查看详情。
+            </div>
+        </div>
+    </div>
+
     <div class="card top-fail-card">
         <div class="card-header">
             <h2 class="card-title">TOP FAIL 项</h2>
@@ -804,48 +795,21 @@
         </div>
     </div>
 
-    <div class="main-grid">
-
-        <div class="left-column">
-            <div class="card recent-card">
-                <div class="card-header">
-                    <h2 class="card-title">最近测试记录</h2>
-                    <span class="card-note">点击任意记录，在弹窗中查看详情</span>
-                </div>
-
-                <div class="card-body" id="recentRecordsArea">
-                    <div class="loading">加载中...</div>
-                </div>
-            </div>
+    <div class="card recent-card">
+        <div class="card-header">
+            <h2 class="card-title">最近测试记录</h2>
+            <span class="card-note">点击任意记录，在弹窗中查看详情</span>
         </div>
 
-        <div class="right-column">
-            <div class="card">
-                <div class="card-header">
-                    <h2 class="card-title">SN 查询</h2>
-                    <span class="card-note">查询结果将在弹窗中显示</span>
-                </div>
-
-                <div class="card-body">
-                    <div class="search-row">
-                        <input id="snInput" placeholder="输入完整 SN 或后 8/10/12 位，例如 K50400241" onkeydown="handleEnter(event)">
-                        <button onclick="searchSN()">查询</button>
-                        <button class="btn-secondary" onclick="clearInput()">清空</button>
-                    </div>
-
-                    <div class="hint">
-                        主页面只显示列表和统计。点击记录或查询 SN 后，会弹出详情对话框。
-                    </div>
-                </div>
-            </div>
+        <div class="card-body" id="recentRecordsArea">
+            <div class="loading">加载中...</div>
         </div>
-
     </div>
 
 </div>
 
 <div class="footer">
-    G4.9 FCT Fail Dashboard · Flask + XML Parser · Dialog Detail Layout
+    G4.9 FCT Fail Dashboard · Flask + XML Parser · Single Column Dialog Layout
 </div>
 
 <div class="modal-backdrop" id="detailModalBackdrop">
@@ -863,9 +827,14 @@
 
 <script>
     function updateLastRefreshTime() {
+        const el = document.getElementById("lastRefreshText");
+        if (!el) {
+            return;
+        }
+
         const now = new Date();
         const text = now.toLocaleString("zh-CN", { hour12: false });
-        document.getElementById("lastRefreshText").innerText = "最后刷新：" + text;
+        el.innerText = "最后刷新：" + text;
     }
 
     function setText(id, value) {
@@ -1191,7 +1160,7 @@
             return;
         }
 
-        const latestRecords = records.slice(0, 80);
+        const latestRecords = records.slice(0, 100);
 
         let html = `
             <div class="recent-scroll">
