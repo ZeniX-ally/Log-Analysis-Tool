@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>G4.9 FCT Dashboard</title>
+</head>
+<body>
+    <h1>G4.9 FCT Fail Dashboard</h1>
+    <p>如果你能看到这行字，说明 Flask + HTML 页面已经打通。</p>
+
+    <hr>
+
+    <h2>SN 查询测试</h2>
+    <input id="snInput" placeholder="输入 SN，例如 G49-001">
+    <button onclick="searchSN()">查询</button>
+
+    <div id="result" style="margin-top:20px;"></div>
+
+    <script>
+        async function searchSN() {
+            const sn = document.getElementById("snInput").value.trim();
+            const resultDiv = document.getElementById("result");
+
+            if (!sn) {
+                alert("请输入 SN");
+                return;
+            }
+
+            resultDiv.innerHTML = "查询中...";
+
+            const response = await fetch(`/api/sn/${sn}`);
+            const data = await response.json();
+
+            resultDiv.innerHTML = `
+                <p><b>SN：</b>${data.sn}</p>
+                <p><b>站点：</b>${data.station}</p>
+                <p><b>结果：</b>${data.result}</p>
+                <p><b>失败项：</b>${data.fail_items.join(", ")}</p>
+            `;
+        }
+    </script>
+</body>
+</html>
