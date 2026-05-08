@@ -3,12 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <title>FCT 测试日志分析平台</title>
+
 <style>
 * {
     box-sizing: border-box;
 }
 
-html, body {
+html,
+body {
     margin: 0;
     padding: 0;
     background: #0e1116;
@@ -17,13 +19,17 @@ html, body {
     font-size: 14px;
 }
 
+body {
+    min-height: 100vh;
+}
+
 .app {
     display: flex;
     min-height: 100vh;
 }
 
 .sidebar {
-    width: 230px;
+    width: 232px;
     background: #141922;
     border-right: 1px solid #252c36;
     padding: 18px 14px;
@@ -35,6 +41,7 @@ html, body {
     font-size: 17px;
     font-weight: 700;
     margin-bottom: 6px;
+    letter-spacing: 0.3px;
 }
 
 .logo-sub {
@@ -122,44 +129,6 @@ html, body {
     font-weight: 400;
 }
 
-.grid-4 {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(150px, 1fr));
-    gap: 14px;
-    margin-bottom: 16px;
-}
-
-.metric {
-    background: #111720;
-    border: 1px solid #27303b;
-    border-radius: 8px;
-    padding: 14px;
-}
-
-.metric-label {
-    font-size: 12px;
-    color: #8a96a6;
-    margin-bottom: 8px;
-}
-
-.metric-value {
-    font-size: 26px;
-    font-weight: 700;
-    color: #f2f5f9;
-}
-
-.metric-pass {
-    color: #63d58f;
-}
-
-.metric-fail {
-    color: #ff6b6b;
-}
-
-.metric-rate {
-    color: #f1c45b;
-}
-
 .search-row {
     display: flex;
     gap: 10px;
@@ -198,13 +167,70 @@ button:hover {
     background: #354254;
 }
 
+.grid-4 {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(150px, 1fr));
+    gap: 14px;
+    margin-bottom: 16px;
+}
+
+.grid-6 {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(120px, 1fr));
+    gap: 14px;
+    margin-bottom: 16px;
+}
+
+.metric {
+    background: #111720;
+    border: 1px solid #27303b;
+    border-radius: 8px;
+    padding: 14px;
+}
+
+.metric-label {
+    font-size: 12px;
+    color: #8a96a6;
+    margin-bottom: 8px;
+}
+
+.metric-value {
+    font-size: 26px;
+    font-weight: 700;
+    color: #f2f5f9;
+}
+
+.metric-pass {
+    color: #63d58f;
+}
+
+.metric-fail {
+    color: #ff6b6b;
+}
+
+.metric-error {
+    color: #ff9f43;
+}
+
+.metric-abort {
+    color: #8ecbff;
+}
+
+.metric-pause {
+    color: #cfd7e3;
+}
+
+.metric-rate {
+    color: #f1c45b;
+}
+
 .table-wrap {
     width: 100%;
     overflow-x: auto;
 }
 
 .scroll-table {
-    max-height: 370px;
+    max-height: 380px;
     overflow-y: auto;
     border: 1px solid #222b36;
     border-radius: 6px;
@@ -258,7 +284,7 @@ tr:hover td {
 }
 
 .col-sn {
-    width: 210px;
+    width: 220px;
 }
 
 .col-model {
@@ -266,7 +292,7 @@ tr:hover td {
 }
 
 .col-result {
-    width: 95px;
+    width: 110px;
 }
 
 .col-source {
@@ -274,16 +300,16 @@ tr:hover td {
 }
 
 .col-file {
-    width: 260px;
+    width: 280px;
 }
 
 .col-time {
-    width: 180px;
+    width: 190px;
 }
 
 .result-pill {
     display: inline-block;
-    min-width: 58px;
+    min-width: 64px;
     padding: 3px 8px;
     border-radius: 999px;
     text-align: center;
@@ -294,37 +320,37 @@ tr:hover td {
 .result-pass {
     background: rgba(99, 213, 143, 0.14);
     color: #63d58f;
-    border: 1px solid rgba(99, 213, 143, 0.28);
+    border: 1px solid rgba(99, 213, 143, 0.3);
 }
 
 .result-fail {
     background: rgba(255, 107, 107, 0.14);
     color: #ff6b6b;
-    border: 1px solid rgba(255, 107, 107, 0.28);
-}
-
-.result-unknown {
-    background: rgba(241, 196, 91, 0.14);
-    color: #f1c45b;
-    border: 1px solid rgba(241, 196, 91, 0.28);
+    border: 1px solid rgba(255, 107, 107, 0.3);
 }
 
 .result-error {
-    background: rgba(255, 140, 0, 0.14);
+    background: rgba(255, 159, 67, 0.14);
     color: #ff9f43;
-    border: 1px solid rgba(255, 140, 0, 0.28);
+    border: 1px solid rgba(255, 159, 67, 0.3);
 }
 
 .result-abort {
     background: rgba(96, 169, 255, 0.14);
     color: #8ecbff;
-    border: 1px solid rgba(96, 169, 255, 0.28);
+    border: 1px solid rgba(96, 169, 255, 0.3);
 }
 
 .result-pause {
     background: rgba(160, 160, 160, 0.14);
     color: #cfd7e3;
-    border: 1px solid rgba(160, 160, 160, 0.28);
+    border: 1px solid rgba(160, 160, 160, 0.3);
+}
+
+.result-unknown {
+    background: rgba(241, 196, 91, 0.14);
+    color: #f1c45b;
+    border: 1px solid rgba(241, 196, 91, 0.3);
 }
 
 .badge {
@@ -500,6 +526,22 @@ canvas {
     margin-top: 10px;
 }
 
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+@media (max-width: 1200px) {
+    .dashboard-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .grid-6 {
+        grid-template-columns: repeat(3, minmax(120px, 1fr));
+    }
+}
+
 @media (max-width: 1100px) {
     .grid-4 {
         grid-template-columns: repeat(2, minmax(150px, 1fr));
@@ -526,7 +568,8 @@ canvas {
         padding: 16px;
     }
 
-    .grid-4 {
+    .grid-4,
+    .grid-6 {
         grid-template-columns: 1fr;
     }
 }
@@ -538,6 +581,7 @@ canvas {
     <aside class="sidebar">
         <div class="logo">FCT 测试日志分析平台</div>
         <div class="logo-sub">XML / Spec / 点位 / 仪表链路</div>
+
         <button class="nav-btn active" onclick="switchPanel('dashboard', this)">综合看板</button>
         <button class="nav-btn" onclick="switchPanel('analysis', this)">XML 分析</button>
         <button class="nav-btn" onclick="switchPanel('machine', this)">机台监控</button>
@@ -547,7 +591,7 @@ canvas {
         <section id="dashboard" class="panel active">
             <div class="page-head">
                 <div class="page-title">综合看板</div>
-                <div class="page-desc">用于 SN 查询、Top Fail 查看和最近测试记录追踪。</div>
+                <div class="page-desc">用于 SN 查询、Top Fail / Top Error 查看，以及最近测试记录追踪。</div>
             </div>
 
             <div class="card">
@@ -555,6 +599,7 @@ canvas {
                     <span>SN 查询</span>
                     <span class="card-subtitle">支持完整 SN 或部分 SN 查询</span>
                 </div>
+
                 <div class="search-row">
                     <input id="snInput" placeholder="请输入 SN，例如 E3002781...">
                     <button onclick="searchSn()">查询</button>
@@ -562,21 +607,43 @@ canvas {
                 </div>
             </div>
 
-            <div class="card">
-                <div class="card-title">
-                    <span>Top Fail 高频失败项</span>
-                    <span class="card-subtitle">按 Fail 出现次数排序</span>
+            <div class="dashboard-grid">
+                <div class="card">
+                    <div class="card-title">
+                        <span>Top Fail 高频失败项</span>
+                        <span class="card-subtitle">仅统计 FAIL，不统计 ERROR / 中断 / 暂停</span>
+                    </div>
+
+                    <div class="table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>失败项</th>
+                                    <th style="width:120px;">次数</th>
+                                </tr>
+                            </thead>
+                            <tbody id="topFailTable"></tbody>
+                        </table>
+                    </div>
                 </div>
-                <div class="table-wrap">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>失败项</th>
-                                <th style="width:120px;">次数</th>
-                            </tr>
-                        </thead>
-                        <tbody id="topFailTable"></tbody>
-                    </table>
+
+                <div class="card">
+                    <div class="card-title">
+                        <span>Top Error 异常项</span>
+                        <span class="card-subtitle">从最近记录详情中统计 ERROR 测试项</span>
+                    </div>
+
+                    <div class="table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>异常项</th>
+                                    <th style="width:120px;">次数</th>
+                                </tr>
+                            </thead>
+                            <tbody id="topErrorTable"></tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
 
@@ -585,6 +652,7 @@ canvas {
                     <span>最近测试记录</span>
                     <span class="card-subtitle">固定高度滚动，点击记录查看工程报告</span>
                 </div>
+
                 <div class="scroll-table">
                     <table>
                         <thead>
@@ -600,6 +668,7 @@ canvas {
                         <tbody id="recentTable"></tbody>
                     </table>
                 </div>
+
                 <div class="note">说明：File / Path / Source / SN / Model / Result 保持原始字段，便于和 XML 文件及服务器路径对应。</div>
             </div>
         </section>
@@ -610,19 +679,32 @@ canvas {
                 <div class="page-desc">用于统计 Fail 趋势、型号分布、重复失败项，以及同时间窗口高频同类 Fail 风险提示。</div>
             </div>
 
-            <div class="grid-4">
+            <div class="grid-6">
                 <div class="metric">
                     <div class="metric-label">总测试数</div>
                     <div class="metric-value" id="metricTotal">0</div>
                 </div>
+
                 <div class="metric">
                     <div class="metric-label">PASS 数量</div>
                     <div class="metric-value metric-pass" id="metricPass">0</div>
                 </div>
+
                 <div class="metric">
                     <div class="metric-label">FAIL 数量</div>
                     <div class="metric-value metric-fail" id="metricFail">0</div>
                 </div>
+
+                <div class="metric">
+                    <div class="metric-label">ERROR 数量</div>
+                    <div class="metric-value metric-error" id="metricError">0</div>
+                </div>
+
+                <div class="metric">
+                    <div class="metric-label">中断 / 暂停</div>
+                    <div class="metric-value metric-abort" id="metricAbortPause">0</div>
+                </div>
+
                 <div class="metric">
                     <div class="metric-label">Fail Rate</div>
                     <div class="metric-value metric-rate" id="metricFailRate">0%</div>
@@ -634,6 +716,7 @@ canvas {
                     <span>Fail 趋势</span>
                     <span class="card-subtitle">按日期统计 Fail 数量</span>
                 </div>
+
                 <div class="canvas-box">
                     <canvas id="trendCanvas"></canvas>
                 </div>
@@ -644,6 +727,7 @@ canvas {
                     <span>型号统计</span>
                     <span class="card-subtitle">按 Model 汇总 PASS / FAIL / Unknown</span>
                 </div>
+
                 <div class="table-wrap">
                     <table>
                         <thead>
@@ -666,6 +750,7 @@ canvas {
                     <span>预警列表</span>
                     <span class="card-subtitle">基于重复 Fail 次数生成初步分析提示</span>
                 </div>
+
                 <div class="table-wrap">
                     <table>
                         <thead>
@@ -686,6 +771,7 @@ canvas {
                     <span>同时间窗口高频同类 Fail 风险提示</span>
                     <span class="card-subtitle">仅做分析提示，不作为机台故障结论</span>
                 </div>
+
                 <div class="table-wrap">
                     <table>
                         <thead>
@@ -702,6 +788,7 @@ canvas {
                         <tbody id="stationRiskTable"></tbody>
                     </table>
                 </div>
+
                 <div class="note">说明：此模块只提示“可能与测试系统、夹具、探针、仪表链路相关”，不输出确定性结论。</div>
             </div>
         </section>
@@ -717,6 +804,7 @@ canvas {
                     <span>实时机台状态</span>
                     <span class="card-subtitle">默认自动刷新</span>
                 </div>
+
                 <div class="table-wrap">
                     <table>
                         <thead>
@@ -749,6 +837,81 @@ canvas {
 </div>
 
 <script>
+function normalizeStatus(raw) {
+    const value = String(raw || "").trim().toUpperCase();
+
+    if (["PASS", "PASSED", "OK", "SUCCESS", "TRUE"].includes(value)) {
+        return "PASS";
+    }
+
+    if (["FAIL", "FAILED", "NG", "FALSE"].includes(value)) {
+        return "FAIL";
+    }
+
+    if (["ERROR", "ERR", "EXCEPTION"].includes(value)) {
+        return "ERROR";
+    }
+
+    if (["ABORT", "ABORTED", "INTERRUPT", "INTERRUPTED", "TERMINATED", "STOP", "STOPPED", "CANCEL", "CANCELED", "CANCELLED"].includes(value)) {
+        return "ABORT";
+    }
+
+    if (["PAUSE", "PAUSED", "SUSPEND", "SUSPENDED", "SKIP", "SKIPPED", "HOLD"].includes(value)) {
+        return "PAUSE";
+    }
+
+    return "UNKNOWN";
+}
+
+function getResultPill(rawStatus) {
+    const status = normalizeStatus(rawStatus);
+
+    if (status === "PASS") {
+        return '<span class="result-pill result-pass">PASS</span>';
+    }
+
+    if (status === "FAIL") {
+        return '<span class="result-pill result-fail">FAIL</span>';
+    }
+
+    if (status === "ERROR") {
+        return '<span class="result-pill result-error">ERROR</span>';
+    }
+
+    if (status === "ABORT") {
+        return '<span class="result-pill result-abort">中断</span>';
+    }
+
+    if (status === "PAUSE") {
+        return '<span class="result-pill result-pause">暂停</span>';
+    }
+
+    return '<span class="result-pill result-unknown">UNKNOWN</span>';
+}
+
+function getItemStatusPill(rawStatus) {
+    return getResultPill(rawStatus);
+}
+
+function escapeHtml(value) {
+    return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+}
+
+function shortText(value, maxLength) {
+    const text = String(value ?? "");
+
+    if (text.length <= maxLength) {
+        return text;
+    }
+
+    return text.slice(0, maxLength) + "...";
+}
+
 function switchPanel(panelId, btn) {
     document.querySelectorAll(".panel").forEach(function(panel) {
         panel.classList.remove("active");
@@ -764,6 +927,7 @@ function switchPanel(panelId, btn) {
     if (panelId === "analysis") {
         loadAnalysis();
         loadStationRisk();
+        loadAnalysisStatusSummary();
     }
 
     if (panelId === "machine") {
@@ -771,54 +935,10 @@ function switchPanel(panelId, btn) {
     }
 }
 
-function escapeHtml(value) {
-    return String(value ?? "")
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;")
-        .replaceAll("'", "&#039;");
-}
-
-function shortText(value, maxLength) {
-    const text = String(value ?? "");
-    if (text.length <= maxLength) {
-        return text;
-    }
-    return text.slice(0, maxLength) + "...";
-}
-
-function getResultPill(result) {
-    const value = String(result || "").toUpperCase();
-
-    if (value === "PASS" || value === "PASSED") {
-        return '<span class="result-pill result-pass">PASS</span>';
-    }
-
-    if (value === "FAIL" || value === "FAILED") {
-        return '<span class="result-pill result-fail">FAIL</span>';
-    }
-
-    return '<span class="result-pill result-unknown">' + escapeHtml(value || "UNKNOWN") + '</span>';
-}
-
-function getItemStatusPill(status) {
-    const value = String(status || "").toUpperCase();
-
-    if (value === "PASSED" || value === "PASS") {
-        return '<span class="result-pill result-pass">PASSED</span>';
-    }
-
-    if (value === "FAILED" || value === "FAIL") {
-        return '<span class="result-pill result-fail">FAILED</span>';
-    }
-
-    return '<span class="result-pill result-unknown">' + escapeHtml(value || "UNKNOWN") + '</span>';
-}
-
 function refreshDashboard() {
     loadRecent();
     loadTopFail();
+    loadTopError();
 }
 
 function loadRecent() {
@@ -838,7 +958,7 @@ function loadRecent() {
             records.forEach(function(record) {
                 const encodedPath = encodeURIComponent(record.file_path || "");
                 const snShort = shortText(record.sn, 24);
-                const fileShort = shortText(record.file_name, 32);
+                const fileShort = shortText(record.file_name, 34);
 
                 html += '<tr class="clickable-row" data-path="' + escapeHtml(encodedPath) + '" onclick="loadRecordDetailFromRow(this)">' +
                     '<td title="' + escapeHtml(record.sn) + '">' + escapeHtml(snShort) + '</td>' +
@@ -873,6 +993,7 @@ function loadRecordDetail(encodedPath) {
                 alert(payload.message || "记录详情加载失败");
                 return;
             }
+
             openRecordModal("测试记录工程报告", payload.data);
         })
         .catch(function(error) {
@@ -909,6 +1030,93 @@ function loadTopFail() {
         });
 }
 
+function loadTopError() {
+    fetch("/api/recent?limit=80")
+        .then(function(response) {
+            return response.json();
+        })
+        .then(function(records) {
+            const table = document.getElementById("topErrorTable");
+
+            if (!records || records.length === 0) {
+                table.innerHTML = '<tr><td colspan="2"><div class="empty">暂无 Error 数据。</div></td></tr>';
+                return;
+            }
+
+            const paths = records
+                .map(function(record) {
+                    return record.file_path || "";
+                })
+                .filter(function(path) {
+                    return path !== "";
+                })
+                .slice(0, 30);
+
+            const tasks = paths.map(function(path) {
+                return fetch("/api/record_detail?file_path=" + encodeURIComponent(path))
+                    .then(function(response) {
+                        return response.json();
+                    })
+                    .catch(function() {
+                        return null;
+                    });
+            });
+
+            Promise.all(tasks).then(function(results) {
+                const counter = {};
+
+                results.forEach(function(payload) {
+                    if (!payload || !payload.success || !payload.data) {
+                        return;
+                    }
+
+                    const items = Array.isArray(payload.data.test_items) ? payload.data.test_items : [];
+
+                    items.forEach(function(item) {
+                        if (normalizeStatus(item.status) !== "ERROR") {
+                            return;
+                        }
+
+                        const key = item.name || item.raw_name || "UNKNOWN_ERROR_ITEM";
+                        counter[key] = (counter[key] || 0) + 1;
+                    });
+                });
+
+                const rows = Object.keys(counter)
+                    .map(function(key) {
+                        return {
+                            item: key,
+                            count: counter[key]
+                        };
+                    })
+                    .sort(function(a, b) {
+                        return b.count - a.count;
+                    })
+                    .slice(0, 10);
+
+                if (rows.length === 0) {
+                    table.innerHTML = '<tr><td colspan="2"><div class="empty">暂无 Error 测试项。</div></td></tr>';
+                    return;
+                }
+
+                let html = "";
+
+                rows.forEach(function(row) {
+                    html += '<tr>' +
+                        '<td title="' + escapeHtml(row.item) + '">' + escapeHtml(row.item) + '</td>' +
+                        '<td>' + escapeHtml(row.count) + '</td>' +
+                    '</tr>';
+                });
+
+                table.innerHTML = html;
+            });
+        })
+        .catch(function(error) {
+            document.getElementById("topErrorTable").innerHTML =
+                '<tr><td colspan="2"><div class="empty">Top Error 加载失败：' + escapeHtml(error) + '</div></td></tr>';
+        });
+}
+
 function searchSn() {
     const sn = document.getElementById("snInput").value.trim();
 
@@ -926,6 +1134,7 @@ function searchSn() {
                 alert(payload.message || "未找到对应 SN");
                 return;
             }
+
             openRecordModal("SN 查询工程报告", payload.data);
         })
         .catch(function(error) {
@@ -937,11 +1146,13 @@ function openRecordModal(title, record) {
     document.getElementById("modalTitle").innerText = title;
 
     const testItems = Array.isArray(record.test_items) ? record.test_items : [];
-    const failedItems = testItems.filter(function(item) {
-        return String(item.status || "").toUpperCase() === "FAILED";
+
+    const abnormalItems = testItems.filter(function(item) {
+        const status = normalizeStatus(item.status);
+        return status === "FAIL" || status === "ERROR";
     });
 
-    const displayItems = failedItems.length > 0 ? failedItems : testItems.slice(0, 80);
+    const displayItems = abnormalItems.length > 0 ? abnormalItems : testItems.slice(0, 80);
     const failItemsText = Array.isArray(record.fail_items) ? record.fail_items.join(", ") : "";
 
     let itemsHtml = "";
@@ -955,8 +1166,9 @@ function openRecordModal(title, record) {
                     '<div class="item-name">' + (index + 1) + '. ' + escapeHtml(item.name || item.raw_name || "-") + '</div>' +
                     '<div>' + getItemStatusPill(item.status) + '</div>' +
                 '</div>' +
+
                 '<div class="item-grid">' +
-                    '<div class="modal-label">项</div><div class="modal-value">' + escapeHtml(item.section || "-") + '</div>' +
+                    '<div class="modal-label">章节</div><div class="modal-value">' + escapeHtml(item.section || "-") + '</div>' +
                     '<div class="modal-label">点位/信号</div><div class="modal-value">' + escapeHtml(item.signal || "-") + '</div>' +
                     '<div class="modal-label">参考点</div><div class="modal-value">' + escapeHtml(item.reference_point || "-") + '</div>' +
                     '<div class="modal-label">仪表类型</div><div class="modal-value">' + escapeHtml(item.instrument || "-") + '</div>' +
@@ -986,17 +1198,30 @@ function openRecordModal(title, record) {
         '<div class="modal-label">测试时间</div><div class="modal-value">' + escapeHtml(record.test_time || "-") + '</div>' +
         '<div class="modal-label">测试耗时</div><div class="modal-value">' + escapeHtml(record.total_test_time || "-") + ' s</div>' +
         '<div class="modal-label">测试项数量</div><div class="modal-value">' + escapeHtml(record.test_count ?? testItems.length) + '</div>' +
-        '<div class="modal-label">PASS 数量</div><div class="modal-value">' + escapeHtml(record.pass_count ?? "-") + '</div>' +
-        '<div class="modal-label">FAIL 数量</div><div class="modal-value">' + escapeHtml(record.fail_count ?? failedItems.length) + '</div>' +
+        '<div class="modal-label">PASS 数量</div><div class="modal-value">' + escapeHtml(record.pass_count ?? countItemsByStatus(testItems, "PASS")) + '</div>' +
+        '<div class="modal-label">FAIL 数量</div><div class="modal-value">' + escapeHtml(record.fail_count ?? countItemsByStatus(testItems, "FAIL")) + '</div>' +
         '<div class="modal-label">Path</div><div class="modal-value">' + escapeHtml(record.file_path || "-") + '</div>' +
         '<div class="modal-label">Fail Items</div><div class="modal-value">' + escapeHtml(failItemsText || "无") + '</div>' +
     '</div>' +
+
     '<div class="section-title">测试项工程报告 <span style="font-size:12px;color:#8792a0;font-weight:400;">' +
-    (failedItems.length > 0 ? "当前仅显示 FAIL 项" : "当前记录无 FAIL，显示前 80 条测试明细") +
+    (abnormalItems.length > 0 ? "当前仅显示 FAIL / ERROR 项" : "当前记录无 FAIL / ERROR，显示前 80 条测试明细") +
     '</span></div>' + itemsHtml;
 
     document.getElementById("modalContent").innerHTML = html;
     document.getElementById("modalMask").style.display = "flex";
+}
+
+function countItemsByStatus(items, targetStatus) {
+    let count = 0;
+
+    items.forEach(function(item) {
+        if (normalizeStatus(item.status) === targetStatus) {
+            count++;
+        }
+    });
+
+    return count;
 }
 
 function closeModal() {
@@ -1013,12 +1238,49 @@ function loadAnalysis() {
             document.getElementById("metricPass").innerText = data.pass ?? 0;
             document.getElementById("metricFail").innerText = data.fail ?? 0;
             document.getElementById("metricFailRate").innerText = (data.fail_rate ?? 0) + "%";
+
             renderModelSummary(data.model_summary || []);
             renderWarningTable(data.warnings || []);
             drawTrend(data.trend || []);
         })
         .catch(function(error) {
             alert("XML 分析数据加载失败：" + error);
+        });
+}
+
+function loadAnalysisStatusSummary() {
+    fetch("/api/recent?limit=200")
+        .then(function(response) {
+            return response.json();
+        })
+        .then(function(records) {
+            let errorCount = 0;
+            let abortPauseCount = 0;
+
+            if (!records || records.length === 0) {
+                document.getElementById("metricError").innerText = "0";
+                document.getElementById("metricAbortPause").innerText = "0";
+                return;
+            }
+
+            records.forEach(function(record) {
+                const status = normalizeStatus(record.result);
+
+                if (status === "ERROR") {
+                    errorCount++;
+                }
+
+                if (status === "ABORT" || status === "PAUSE") {
+                    abortPauseCount++;
+                }
+            });
+
+            document.getElementById("metricError").innerText = errorCount;
+            document.getElementById("metricAbortPause").innerText = abortPauseCount;
+        })
+        .catch(function() {
+            document.getElementById("metricError").innerText = "0";
+            document.getElementById("metricAbortPause").innerText = "0";
         });
 }
 
@@ -1171,9 +1433,9 @@ function drawTrend(rows) {
         return;
     }
 
-    const maxFail = Math.max(...rows.map(function(row) {
+    const maxFail = Math.max.apply(null, rows.map(function(row) {
         return Number(row.fail || 0);
-    }), 1);
+    }).concat([1]));
 
     const barSpace = chartWidth / rows.length;
     const barWidth = Math.max(14, barSpace * 0.48);
@@ -1258,6 +1520,7 @@ function autoRefresh() {
     if (document.getElementById("analysis").classList.contains("active")) {
         loadAnalysis();
         loadStationRisk();
+        loadAnalysisStatusSummary();
     }
 
     if (document.getElementById("machine").classList.contains("active")) {
@@ -1267,6 +1530,7 @@ function autoRefresh() {
 
 loadRecent();
 loadTopFail();
+loadTopError();
 loadMachineStatus();
 
 setInterval(autoRefresh, 5000);
