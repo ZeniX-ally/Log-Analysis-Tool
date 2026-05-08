@@ -41,7 +41,7 @@ ERROR_STATUS_SET = {
     "EXCEPTION"
 }
 
-SKIP_STATUS_SET = {
+SKIPPED_STATUS_SET = {
     "SKIPPED",
     "SKIP"
 }
@@ -51,11 +51,61 @@ DONE_STATUS_SET = {
 }
 
 
+KNOWN_MODEL_PREFIXES = [
+    "E3002781",
+    "E3002624",
+    "E3002609",
+    "E3002752",
+    "E3002757"
+]
+
+
+def local_name(tag):
+    """
+    Remove XML namespace from tag name.
+
+    Example:
+    {namespace}DUT -> DUT
+    DUT            -> DUT
+    """
+    if tag is None:
+        return ""
+
+    text = str(tag)
+
+    if "}" in text:
+        return text.split("}", 1)[1]
+
+    return text
+
+
+def iter_by_tag(root, tag_name):
+    """
+    Iterate XML nodes by local tag name.
+    This is more robust than root.findall('.//TAG') when namespace exists.
+    """
+    wanted = str(tag_name).upper()
+
+    for node in root.iter():
+        if local_name(node.tag).upper() == wanted:
+            yield node
+
+
+def find_first(root, tag_name):
+    """
+    Find first XML node by local tag name.
+    """
+    for node in iter_by_tag(root, tag_name):
+        return node
+
+    return None
+
+
 def normalize_status(status):
     """
-    将 FTS/TestStand XML 状态统一成前端和后端通用状态。
+    Normalize raw FTS/TestStand status into dashboard status.
 
-    输出：
+    Output:
     PASS
     FAIL
     PAUSED
@@ -65,7 +115,6 @@ def normalize_status(status):
     DONE
     UNKNOWN
     """
-
     if status is None:
         return "UNKNOWN"
 
@@ -89,7 +138,7 @@ def normalize_status(status):
     if s in ERROR_STATUS_SET:
         return "ERROR"
 
-    if s in SKIP_STATUS_SET:
+    if s in SKIPPED_STATUS_SET:
         return "SKIPPED"
 
     if s in DONE_STATUS_SET:
@@ -99,11 +148,6 @@ def normalize_status(status):
 
 
 def is_abnormal_status(status):
-    """
-    判断是否属于非 PASS 状态。
-    用于统计异常测试项。
-    """
-
     return status in {
         "FAIL",
         "PAUSED",
@@ -114,28 +158,25 @@ def is_abnormal_status(status):
 
 def format_timestamp(ts):
     """
-    把 2026-05-05T10:39:18.768+08:00 转成 2026-05-05 10:39:18。
-    如果格式异常，则原样返回。
-    """
+    Convert XML timestamp to readable format.
 
+    Example:
+    2026-05-05T10:39:18.768+08:00 -> 2026-05-05 10:39:18
+    """
     if not ts:
         return ""
 
-    ts = str(ts).strip()
+    text = str(ts).strip()
 
     try:
-        no_tz = re.sub(r"([+-]\d{2}:\d{2}|Z)$", "", ts)
-        no_ms = no_tz.split(".")[0]
-        return no_ms.replace("T", " ")
+        text = re.sub(r"([+-]\d{2}:\d{2}|Z)$", "", text)
+        text = text.split(".")[0]
+        return text.replace("T", " ")
     except Exception:
-        return ts
+        return str(ts)
 
 
 def get_file_time(xml_file_path):
-    """
-    读取文件修改时间。
-    """
-
     try:
         file_mtime_ts = os.path.getmtime(xml_file_path)
         file_mtime = datetime.fromtimestamp(file_mtime_ts).strftime("%Y-%m-%d %H:%M:%S")
@@ -144,21 +185,117 @@ def get_file_time(xml_file_path):
         return "", 0
 
 
+def get_relative_path(xml_file_path, log_dir):
+    try:
+        rel = os.path.relpath(xml_file_path, log_dir)
+        return rel.replace("\\", "/")
+    except Exception:
+        return os.path.basename(xml_file_path)
+
+
+def looks_like_model(text):
+    if not text:
+        return False
+
+    value = str(text).strip().upper()
+
+    if value in KNOWN_MODEL_PREFIXES:
+        return True
+
+    if re.match(r"^E\d{7}$", value):
+        return True
+
+    return False
+
+
+def get_model_from_sn(sn):
+    text = str(sn or "").strip().upper()
+
+    for prefix in KNOWN_MODEL_PREFIXES:
+        if text.startswith(prefix):
+            return prefix
+
+    match = re.match(r"^(E\d{7})", text)
+    if match:
+        return match.group(1)
+
+    return ""
+
+
+def extract_path_metadata(xml_file_path, log_dir):
+    """
+    Extract production path metadata.
+
+    Supported path examples:
+    data/logs/Online/E3002781/20260507/xxx.xml
+    data/logs/Offline/E3002624/20260507/xxx.xml
+
+    Output:
+    test_mode    -> Online / Offline / Unknown
+    model        -> E3002781 / E3002624 / ...
+    date_folder  -> date directory after model
+    relative_path
+    """
+    relative_path = get_relative_path(xml_file_path, log_dir)
+    parts = relative_path.replace("\\", "/").split("/")
+
+    test_mode = "Unknown"
+    model = ""
+    date_folder = ""
+
+    lower_parts = [p.lower() for p in parts]
+
+    mode_index = -1
+
+    for index, part in enumerate(lower_parts):
+        if part == "online":
+            test_mode = "Online"
+            mode_index = index
+            break
+
+        if part == "offline":
+            test_mode = "Offline"
+            mode_index = index
+            break
+
+    if mode_index >= 0:
+        if len(parts) > mode_index + 1:
+            candidate_model = parts[mode_index + 1].strip()
+            if looks_like_model(candidate_model):
+                model = candidate_model.upper()
+
+        if len(parts) > mode_index + 2:
+            date_folder = parts[mode_index + 2].strip()
+
+    # Fallback: find model anywhere in path
+    if not model:
+        for part in parts:
+            if looks_like_model(part):
+                model = part.strip().upper()
+                break
+
+    return {
+        "test_mode": test_mode,
+        "model": model,
+        "date_folder": date_folder,
+        "relative_path": relative_path
+    }
+
+
 def extract_sn_from_filename(filename):
     """
-    从文件名兜底提取 SN。
+    Extract SN from FTS filename.
 
-    示例：
+    Example:
     F_Fts_PEU_G49_FCT6_E3002781AFV75236898002K50400241_20260505104457494_20265524457582.xml
     """
-
     base = os.path.basename(filename)
 
-    match = re.search(r"FCT6_([^_]+)_", base, re.IGNORECASE)
+    match = re.search(r"FCT\d*_([^_]+)_", base, re.IGNORECASE)
     if match:
         return match.group(1).strip()
 
-    match = re.search(r"(E[A-Za-z0-9]{20,40})", base)
+    match = re.search(r"(E[A-Za-z0-9]{20,50})", base)
     if match:
         return match.group(1).strip()
 
@@ -166,12 +303,8 @@ def extract_sn_from_filename(filename):
 
 
 def get_station_from_xml(root):
-    """
-    从 FACTORY TESTER 或 PRODUCT NAME 获取站点信息。
-    """
-
-    factory = root.find(".//FACTORY")
-    product = root.find(".//PRODUCT")
+    factory = find_first(root, "FACTORY")
+    product = find_first(root, "PRODUCT")
 
     tester = ""
     product_name = ""
@@ -194,11 +327,6 @@ def get_station_from_xml(root):
 
 
 def build_parent_map(root):
-    """
-    建立 child -> parent 映射。
-    用于从 TEST 反查上级 GROUP。
-    """
-
     return {
         child: parent
         for parent in root.iter()
@@ -206,34 +334,28 @@ def build_parent_map(root):
     }
 
 
-def get_parent_group(test_node, parent_map):
-    """
-    获取 TEST 的上级 GROUP。
-    """
-
-    parent = parent_map.get(test_node)
+def get_parent_group(node, parent_map):
+    parent = parent_map.get(node)
 
     while parent is not None:
-        if parent.tag == "GROUP":
+        if local_name(parent.tag).upper() == "GROUP":
             return parent
+
         parent = parent_map.get(parent)
 
     return None
 
 
 def get_path_groups(node, parent_map):
-    """
-    获取当前 TEST 所在 GROUP 路径。
-    """
-
     groups = []
     parent = parent_map.get(node)
 
     while parent is not None:
-        if parent.tag == "GROUP":
+        if local_name(parent.tag).upper() == "GROUP":
             name = parent.attrib.get("NAME", "").strip()
             if name:
                 groups.append(name)
+
         parent = parent_map.get(parent)
 
     groups.reverse()
@@ -241,24 +363,13 @@ def get_path_groups(node, parent_map):
 
 
 def parse_test_nodes(root, parent_map):
-    """
-    解析所有 TEST 节点。
-
-    返回：
-    raw_items
-    fail_items
-    paused_items
-    interrupted_items
-    error_items
-    """
-
     raw_items = []
     fail_items = []
     paused_items = []
     interrupted_items = []
     error_items = []
 
-    test_nodes = root.findall(".//TEST")
+    test_nodes = list(iter_by_tag(root, "TEST"))
 
     for index, test in enumerate(test_nodes, start=1):
         group = get_parent_group(test, parent_map)
@@ -269,19 +380,19 @@ def parse_test_nodes(root, parent_map):
         test_status = normalize_status(test_status_raw)
 
         group_name = ""
-        group_status = ""
-        group_status_raw = ""
         group_type = ""
+        group_status_raw = ""
+        group_status = ""
         group_timestamp = ""
 
         if group is not None:
             group_name = group.attrib.get("NAME", "").strip()
+            group_type = group.attrib.get("TYPE", "").strip()
             group_status_raw = group.attrib.get("STATUS", "").strip()
             group_status = normalize_status(group_status_raw)
-            group_type = group.attrib.get("TYPE", "").strip()
             group_timestamp = format_timestamp(group.attrib.get("TIMESTAMP", ""))
 
-        item_name = test_name or group_name or f"TEST_{index}"
+        item_name = test_name or group_name or "TEST_" + str(index)
 
         item = {
             "index": index,
@@ -321,21 +432,13 @@ def parse_test_nodes(root, parent_map):
 
 
 def parse_abnormal_groups(root):
-    """
-    解析异常 GROUP。
-
-    用途：
-    1. DUT / PANEL 是 Terminated 但 TEST 没有明确 Failed 时，用 GROUP 定位中断点。
-    2. 识别 PAUSED / INTERRUPTED / ERROR 的 GROUP。
-    """
-
     abnormal_groups = []
     failed_groups = []
     paused_groups = []
     interrupted_groups = []
     error_groups = []
 
-    for group in root.findall(".//GROUP"):
+    for group in iter_by_tag(root, "GROUP"):
         raw_status = group.attrib.get("STATUS", "").strip()
         status = normalize_status(raw_status)
 
@@ -343,7 +446,6 @@ def parse_abnormal_groups(root):
             continue
 
         name = group.attrib.get("NAME", "").strip()
-        group_type = group.attrib.get("TYPE", "").strip()
 
         if not name:
             continue
@@ -353,7 +455,7 @@ def parse_abnormal_groups(root):
 
         item = {
             "name": name,
-            "type": group_type,
+            "type": group.attrib.get("TYPE", ""),
             "stepgroup": group.attrib.get("STEPGROUP", ""),
             "timestamp": format_timestamp(group.attrib.get("TIMESTAMP", "")),
             "status": status,
@@ -390,21 +492,6 @@ def decide_overall_result(
     group_info,
     raw_items
 ):
-    """
-    决定整机最终结果。
-
-    优先级：
-    1. DUT/PANEL 明确 INTERRUPTED -> INTERRUPTED
-    2. DUT/PANEL 明确 PAUSED -> PAUSED
-    3. DUT/PANEL 明确 ERROR -> FAIL
-    4. TEST 有 FAIL -> FAIL
-    5. TEST 有 INTERRUPTED -> INTERRUPTED
-    6. TEST 有 PAUSED -> PAUSED
-    7. DUT/PANEL PASS -> PASS
-    8. 全部 TEST PASS -> PASS
-    9. UNKNOWN
-    """
-
     if dut_status == "INTERRUPTED" or panel_status == "INTERRUPTED":
         return "INTERRUPTED"
 
@@ -412,7 +499,7 @@ def decide_overall_result(
         return "PAUSED"
 
     if dut_status == "ERROR" or panel_status == "ERROR":
-        return "FAIL"
+        return "ERROR"
 
     if fail_items:
         return "FAIL"
@@ -424,7 +511,7 @@ def decide_overall_result(
         return "PAUSED"
 
     if error_items:
-        return "FAIL"
+        return "ERROR"
 
     if group_info.get("interrupted_groups"):
         return "INTERRUPTED"
@@ -433,6 +520,9 @@ def decide_overall_result(
         return "PAUSED"
 
     if group_info.get("error_groups"):
+        return "ERROR"
+
+    if group_info.get("failed_groups"):
         return "FAIL"
 
     if dut_status == "PASS":
@@ -447,12 +537,30 @@ def decide_overall_result(
     return "UNKNOWN"
 
 
-def parse_fct_xml(xml_file_path):
-    """
-    解析 G4.9 FCT 真实 FTS XML。
-    """
+def build_sn_aliases(sn):
+    aliases = []
+
+    if sn:
+        aliases.append(sn)
+
+        if len(sn) >= 8:
+            aliases.append(sn[-8:])
+
+        if len(sn) >= 10:
+            aliases.append(sn[-10:])
+
+        if len(sn) >= 12:
+            aliases.append(sn[-12:])
+
+    return list(dict.fromkeys([x for x in aliases if x]))
+
+
+def parse_fct_xml(xml_file_path, log_dir=None):
+    if log_dir is None:
+        log_dir = os.path.dirname(xml_file_path)
 
     file_mtime, file_mtime_ts = get_file_time(xml_file_path)
+    path_meta = extract_path_metadata(xml_file_path, log_dir)
 
     try:
         tree = ET.parse(xml_file_path)
@@ -461,9 +569,9 @@ def parse_fct_xml(xml_file_path):
 
         batch_timestamp = format_timestamp(root.attrib.get("TIMESTAMP", ""))
 
-        product = root.find(".//PRODUCT")
-        panel = root.find(".//PANEL")
-        dut = root.find(".//DUT")
+        product = find_first(root, "PRODUCT")
+        panel = find_first(root, "PANEL")
+        dut = find_first(root, "DUT")
 
         station, tester = get_station_from_xml(root)
 
@@ -478,6 +586,11 @@ def parse_fct_xml(xml_file_path):
 
         if not sn:
             sn = extract_sn_from_filename(xml_file_path)
+
+        model = path_meta.get("model", "")
+
+        if not model:
+            model = get_model_from_sn(sn)
 
         panel_status = "UNKNOWN"
         panel_status_raw = ""
@@ -530,22 +643,22 @@ def parse_fct_xml(xml_file_path):
                 if group["name"] not in fail_items:
                     fail_items.append(group["name"])
 
+        if result == "ERROR" and not error_items:
             for group in group_info.get("error_groups", []):
-                if group["name"] not in fail_items:
-                    fail_items.append(group["name"])
-
-        sn_aliases = []
-        if sn:
-            sn_aliases.append(sn)
-            sn_aliases.append(sn[-8:])
-            sn_aliases.append(sn[-10:])
-            sn_aliases.append(sn[-12:])
+                if group["name"] not in error_items:
+                    error_items.append(group["name"])
 
         source_file = os.path.basename(xml_file_path)
 
         return {
             "sn": sn,
-            "sn_aliases": list(dict.fromkeys([x for x in sn_aliases if x])),
+            "sn_aliases": build_sn_aliases(sn),
+
+            "model": model or "-",
+            "test_mode": path_meta.get("test_mode", "Unknown"),
+            "date_folder": path_meta.get("date_folder", ""),
+            "relative_path": path_meta.get("relative_path", source_file),
+
             "station": station,
             "tester": tester,
             "product": product_name,
@@ -578,6 +691,7 @@ def parse_fct_xml(xml_file_path):
             "test_time": dut_testtime or panel_testtime,
 
             "source_file": source_file,
+            "source_path": xml_file_path,
             "file_mtime": file_mtime,
             "file_mtime_ts": file_mtime_ts,
 
@@ -593,10 +707,17 @@ def parse_fct_xml(xml_file_path):
     except Exception as e:
         source_file = os.path.basename(xml_file_path)
         fallback_sn = extract_sn_from_filename(source_file)
+        fallback_model = path_meta.get("model", "") or get_model_from_sn(fallback_sn) or "-"
 
         return {
             "sn": fallback_sn,
-            "sn_aliases": [fallback_sn] if fallback_sn else [],
+            "sn_aliases": build_sn_aliases(fallback_sn),
+
+            "model": fallback_model,
+            "test_mode": path_meta.get("test_mode", "Unknown"),
+            "date_folder": path_meta.get("date_folder", ""),
+            "relative_path": path_meta.get("relative_path", source_file),
+
             "station": "FCT",
             "tester": "",
             "product": "FCT",
@@ -629,6 +750,7 @@ def parse_fct_xml(xml_file_path):
             "test_time": "",
 
             "source_file": source_file,
+            "source_path": xml_file_path,
             "file_mtime": file_mtime,
             "file_mtime_ts": file_mtime_ts,
 
@@ -646,20 +768,24 @@ def parse_fct_xml(xml_file_path):
 
 def load_all_fct_records(log_dir):
     """
-    扫描 data/logs 下所有 XML。
-    """
+    Recursively scan all XML files under log_dir.
 
+    Supported:
+    data/logs/*.xml
+    data/logs/Online/Model/Date/*.xml
+    data/logs/Offline/Model/Date/*.xml
+    """
     records = []
 
-    xml_pattern = os.path.join(log_dir, "*.xml")
-    xml_files = glob.glob(xml_pattern)
+    xml_pattern = os.path.join(log_dir, "**", "*.xml")
+    xml_files = glob.glob(xml_pattern, recursive=True)
 
     for xml_file in xml_files:
-        record = parse_fct_xml(xml_file)
+        record = parse_fct_xml(xml_file, log_dir=log_dir)
         records.append(record)
 
     records.sort(
-        key=lambda x: x.get("file_mtime_ts", 0),
+        key=lambda item: item.get("file_mtime_ts", 0),
         reverse=True
     )
 
@@ -668,14 +794,14 @@ def load_all_fct_records(log_dir):
 
 def load_all_fct_xml(log_dir):
     """
-    兼容旧版函数。
+    Compatibility function for older app.py versions.
     """
-
     records = load_all_fct_records(log_dir)
 
     data = {}
-    for record in records:
-        key = record.get("source_file") or record.get("sn") or f"UNKNOWN_{len(data)}"
+
+    for index, record in enumerate(records):
+        key = record.get("relative_path") or record.get("source_file") or record.get("sn") or "UNKNOWN_" + str(index)
         data[key] = record
 
     return data
@@ -683,10 +809,15 @@ def load_all_fct_xml(log_dir):
 
 def find_latest_record_by_sn(records, query_sn):
     """
-    SN 查询逻辑。
-    支持完整 SN、后 8/10/12 位、文件名片段。
-    """
+    Compatibility SN search helper.
 
+    Supports:
+    full SN
+    SN suffix
+    aliases
+    filename fragment
+    relative path fragment
+    """
     if not query_sn:
         return None
 
@@ -700,10 +831,12 @@ def find_latest_record_by_sn(records, query_sn):
     for record in records:
         sn = str(record.get("sn", "")).strip().upper()
         source_file = str(record.get("source_file", "")).strip().upper()
+        relative_path = str(record.get("relative_path", "")).strip().upper()
+
         aliases = [
-            str(x).strip().upper()
-            for x in record.get("sn_aliases", [])
-            if x
+            str(alias).strip().upper()
+            for alias in record.get("sn_aliases", [])
+            if alias
         ]
 
         if query == sn:
@@ -718,7 +851,11 @@ def find_latest_record_by_sn(records, query_sn):
             matched.append(record)
             continue
 
-        if query and query in source_file:
+        if source_file and query in source_file:
+            matched.append(record)
+            continue
+
+        if relative_path and query in relative_path:
             matched.append(record)
             continue
 
@@ -726,7 +863,7 @@ def find_latest_record_by_sn(records, query_sn):
         return None
 
     matched.sort(
-        key=lambda x: x.get("file_mtime_ts", 0),
+        key=lambda item: item.get("file_mtime_ts", 0),
         reverse=True
     )
 

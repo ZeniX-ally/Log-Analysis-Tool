@@ -172,6 +172,27 @@
             font-size: 12px;
         }
 
+        .filter-row {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 12px;
+        }
+
+        .filter-btn {
+            height: 30px;
+            padding: 0 10px;
+            font-size: 12px;
+            background: transparent;
+            color: var(--text);
+            border: 1px solid var(--border2);
+        }
+
+        .filter-btn.active {
+            background: var(--blue);
+            border-color: var(--blue);
+        }
+
         .top-list {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
@@ -208,7 +229,7 @@
         }
 
         .recent-card {
-            height: 620px;
+            height: 640px;
             display: flex;
             flex-direction: column;
         }
@@ -233,7 +254,7 @@
         }
 
         .recent-table {
-            min-width: 1080px;
+            min-width: 1260px;
         }
 
         th {
@@ -284,18 +305,33 @@
         }
 
         .issue-text {
-            max-width: 520px;
+            max-width: 420px;
             color: #d1d5db;
         }
 
         .file-text {
-            max-width: 420px;
+            max-width: 360px;
+            color: #cbd5e1;
+        }
+
+        .path-text {
+            max-width: 360px;
             color: #cbd5e1;
         }
 
         .time-text {
             white-space: nowrap;
             color: #d1d5db;
+        }
+
+        .mode-online {
+            color: #93c5fd;
+            font-weight: 700;
+        }
+
+        .mode-offline {
+            color: #fbbf24;
+            font-weight: 700;
         }
 
         .pill {
@@ -615,7 +651,7 @@
     <div class="card">
         <div class="card-header">
             <h2 class="card-title">SN 查询</h2>
-            <span class="card-note"></span>
+            <span class="card-note">查询结果将在弹窗中显示</span>
         </div>
         <div class="card-body">
             <div class="search-row">
@@ -623,14 +659,24 @@
                 <button id="searchBtn">查询</button>
                 <button class="btn-secondary" id="clearBtn">清空</button>
             </div>
-            <div class="hint"></div>
+            <div class="hint">点击“查询”后会弹出测试详情；也可以点击下方“最近测试记录”中的任意行查看详情。</div>
+
+            <div class="filter-row">
+                <button class="filter-btn active" data-filter-type="all" data-filter-value="ALL">全部</button>
+                <button class="filter-btn" data-filter-type="mode" data-filter-value="Online">Online</button>
+                <button class="filter-btn" data-filter-type="mode" data-filter-value="Offline">Offline</button>
+                <button class="filter-btn" data-filter-type="result" data-filter-value="FAIL">FAIL</button>
+                <button class="filter-btn" data-filter-type="result" data-filter-value="INTERRUPTED">中断</button>
+                <button class="filter-btn" data-filter-type="model" data-filter-value="E3002781">E3002781</button>
+                <button class="filter-btn" data-filter-type="model" data-filter-value="E3002624">E3002624</button>
+            </div>
         </div>
     </div>
 
     <div class="card">
         <div class="card-header">
             <h2 class="card-title">TOP FAIL 项</h2>
-            <span class="card-note"></span>
+            <span class="card-note">仅显示最容易失败的前三项</span>
         </div>
         <div class="card-body" id="topFailArea">
             <div class="loading">加载中...</div>
@@ -640,7 +686,7 @@
     <div class="card recent-card">
         <div class="card-header">
             <h2 class="card-title">最近测试记录</h2>
-            <span class="card-note"></span>
+            <span class="card-note">支持 Online / Offline、型号、日期目录、相对路径显示</span>
         </div>
         <div class="card-body" id="recentArea">
             <div class="loading">加载中...</div>
@@ -649,7 +695,7 @@
 
 </div>
 
-<div class="footer"></div>
+<div class="footer">G4.9 FCT Fail Dashboard · Recursive Online Offline Version</div>
 
 <div class="modal" id="detailModal">
     <div class="modal-box">
@@ -664,6 +710,12 @@
 </div>
 
 <script>
+    var allRecords = [];
+    var currentFilter = {
+        type: "all",
+        value: "ALL"
+    };
+
     function h(value) {
         return String(value)
             .replace(/&/g, "&amp;")
@@ -682,42 +734,66 @@
 
     function modelFromSn(sn) {
         var text = String(sn || "").toUpperCase();
+
         if (text.indexOf("E3002781") === 0) {
             return "E3002781";
         }
+
         if (text.indexOf("E3002624") === 0) {
             return "E3002624";
         }
+
+        var m = text.match(/^(E\d{7})/);
+        if (m) {
+            return m[1];
+        }
+
         return "-";
+    }
+
+    function getModel(record) {
+        if (record.model && record.model !== "-") {
+            return record.model;
+        }
+
+        return modelFromSn(record.sn);
     }
 
     function shortSn(sn) {
         var text = String(sn || "");
+
         if (!text) {
             return "-";
         }
+
         if (text.length <= 10) {
             return text;
         }
+
         return text.slice(-8);
     }
 
     function cutText(text, maxLength) {
         var value = String(text || "-");
+
         if (value.length <= maxLength) {
             return value;
         }
+
         return value.slice(0, maxLength - 3) + "...";
     }
 
     function cutMiddle(text, maxLength) {
         var value = String(text || "-");
+
         if (value.length <= maxLength) {
             return value;
         }
+
         var keep = maxLength - 3;
         var front = Math.ceil(keep * 0.58);
         var back = keep - front;
+
         return value.slice(0, front) + "..." + value.slice(value.length - back);
     }
 
@@ -725,15 +801,19 @@
         if (record.fail_items && record.fail_items.length > 0) {
             return record.fail_items.join(", ");
         }
+
         if (record.interrupted_items && record.interrupted_items.length > 0) {
             return record.interrupted_items.join(", ");
         }
+
         if (record.paused_items && record.paused_items.length > 0) {
             return record.paused_items.join(", ");
         }
+
         if (record.error_items && record.error_items.length > 0) {
             return record.error_items.join(", ");
         }
+
         return "-";
     }
 
@@ -741,18 +821,23 @@
         if (result === "PASS") {
             return "pill-pass";
         }
+
         if (result === "FAIL") {
             return "pill-fail";
         }
+
         if (result === "PAUSED") {
             return "pill-paused";
         }
+
         if (result === "INTERRUPTED") {
             return "pill-interrupted";
         }
+
         if (result === "ERROR" || result === "PARSE_ERROR") {
             return "pill-error";
         }
+
         return "pill-unknown";
     }
 
@@ -760,18 +845,23 @@
         if (result === "PASS") {
             return "badge-pass";
         }
+
         if (result === "FAIL") {
             return "badge-fail";
         }
+
         if (result === "PAUSED") {
             return "badge-paused";
         }
+
         if (result === "INTERRUPTED") {
             return "badge-interrupted";
         }
+
         if (result === "ERROR" || result === "PARSE_ERROR") {
             return "badge-error";
         }
+
         return "badge-gray";
     }
 
@@ -779,19 +869,56 @@
         if (result === "PASS") {
             return "green";
         }
+
         if (result === "FAIL") {
             return "red";
         }
+
         if (result === "PAUSED") {
             return "yellow";
         }
+
         if (result === "INTERRUPTED") {
             return "orange";
         }
+
         if (result === "ERROR" || result === "PARSE_ERROR") {
             return "orange";
         }
+
         return "gray";
+    }
+
+    function modeClass(mode) {
+        if (mode === "Online") {
+            return "mode-online";
+        }
+
+        if (mode === "Offline") {
+            return "mode-offline";
+        }
+
+        return "gray";
+    }
+
+    function passFilter(record) {
+        if (currentFilter.type === "all") {
+            return true;
+        }
+
+        if (currentFilter.type === "mode") {
+            return record.test_mode === currentFilter.value;
+        }
+
+        if (currentFilter.type === "result") {
+            return record.result === currentFilter.value;
+        }
+
+        if (currentFilter.type === "model") {
+            return getModel(record) === currentFilter.value;
+        }
+
+        return true;
     }
 
     async function loadStats() {
@@ -828,6 +955,7 @@
         entries = entries.slice(0, 3);
 
         var html = '<div class="top-list">';
+
         entries.forEach(function(item, index) {
             html += '<div class="top-item">';
             html += '<div class="top-rank">TOP ' + (index + 1) + '</div>';
@@ -835,8 +963,8 @@
             html += '<div class="top-count">' + h(item[1]) + '</div>';
             html += '</div>';
         });
-        html += '</div>';
 
+        html += '</div>';
         area.innerHTML = html;
     }
 
@@ -846,17 +974,20 @@
         try {
             var res = await fetch("/api/all");
             var records = await res.json();
-            renderRecent(records);
+            allRecords = records || [];
+            renderRecent();
         } catch (error) {
             area.innerHTML = '<div class="empty">最近记录加载失败：' + h(error) + '</div>';
         }
     }
 
-    function renderRecent(records) {
+    function renderRecent() {
         var area = document.getElementById("recentArea");
 
+        var records = allRecords.filter(passFilter);
+
         if (!records || records.length === 0) {
-            area.innerHTML = '<div class="empty">当前 logs 目录下暂无 XML 测试记录。</div>';
+            area.innerHTML = '<div class="empty">当前筛选条件下暂无 XML 测试记录。</div>';
             return;
         }
 
@@ -866,26 +997,35 @@
         html += '<table class="recent-table">';
         html += '<thead><tr>';
         html += '<th>#</th>';
+        html += '<th>模式</th>';
+        html += '<th>型号</th>';
         html += '<th>SN</th>';
         html += '<th>状态</th>';
         html += '<th>问题项</th>';
         html += '<th>测试时间</th>';
         html += '<th>XML 文件</th>';
+        html += '<th>相对路径</th>';
         html += '</tr></thead><tbody>';
 
         list.forEach(function(record, index) {
             var sn = record.sn || "";
             var result = record.result || "UNKNOWN";
+            var mode = record.test_mode || "Unknown";
+            var model = getModel(record);
             var issue = issueText(record);
             var file = record.source_file || "-";
+            var relPath = record.relative_path || file;
 
             html += '<tr class="record-row" data-sn="' + h(sn) + '">';
             html += '<td>' + (index + 1) + '</td>';
+            html += '<td><span class="' + modeClass(mode) + '">' + h(mode) + '</span></td>';
+            html += '<td>' + h(model || "-") + '</td>';
             html += '<td title="' + h(sn || "-") + '"><span class="mono ellipsis short-sn">' + h(shortSn(sn)) + '</span></td>';
             html += '<td><span class="pill ' + pillClass(result) + '">' + h(result) + '</span></td>';
             html += '<td title="' + h(issue) + '"><span class="ellipsis issue-text">' + h(cutText(issue, 72)) + '</span></td>';
             html += '<td class="time-text">' + h(record.time || "-") + '</td>';
-            html += '<td title="' + h(file) + '"><span class="mono ellipsis file-text">' + h(cutMiddle(file, 58)) + '</span></td>';
+            html += '<td title="' + h(file) + '"><span class="mono ellipsis file-text">' + h(cutMiddle(file, 52)) + '</span></td>';
+            html += '<td title="' + h(relPath) + '"><span class="mono ellipsis path-text">' + h(cutMiddle(relPath, 60)) + '</span></td>';
             html += '</tr>';
         });
 
@@ -897,6 +1037,7 @@
 
     function bindRows() {
         var rows = document.querySelectorAll(".record-row");
+
         rows.forEach(function(row) {
             row.addEventListener("click", function() {
                 var sn = row.getAttribute("data-sn") || "";
@@ -984,13 +1125,18 @@
     }
 
     function buildDetail(data) {
+        var model = data.model && data.model !== "-" ? data.model : modelFromSn(data.sn);
+
         var html = '<div class="detail-grid">';
         html += infoRow("SN", data.sn || "-");
-        html += infoRow("型号", modelFromSn(data.sn));
+        html += infoRow("型号", model || "-");
+        html += infoRow("模式", data.test_mode || "Unknown");
+        html += infoRow("日期目录", data.date_folder || "-");
         html += infoRow("站点", data.station || "FCT");
         html += '<div class="info-row"><span class="info-label">结果：</span><span class="badge ' + badgeClass(data.result) + '">' + h(data.result || "UNKNOWN") + '</span></div>';
         html += infoRow("测试时间", data.time || "-");
         html += infoRow("XML 文件", data.source_file || "-");
+        html += infoRow("相对路径", data.relative_path || "-");
         html += infoRow("文件时间", data.file_mtime || "-");
         html += '</div>';
 
@@ -1033,7 +1179,7 @@
 
     function rawTable(items) {
         var html = '<h3 style="margin-top:18px;font-size:15px;">原始测试项明细 ';
-        html += '<span style="color:var(--sub);font-size:12px;font-weight:normal;">（共 ' + items.length + ' 项）</span>';
+        html += '<span style="color:var(--sub);font-size:12px;font-weight:normal;">（共 ' + items.length + ' 项，弹窗内滚动查看）</span>';
         html += '</h3>';
 
         html += '<div class="raw-scroll"><table class="raw-table">';
@@ -1065,27 +1211,53 @@
         ]);
     }
 
+    function bindFilters() {
+        var buttons = document.querySelectorAll(".filter-btn");
+
+        buttons.forEach(function(btn) {
+            btn.addEventListener("click", function() {
+                buttons.forEach(function(item) {
+                    item.classList.remove("active");
+                });
+
+                btn.classList.add("active");
+
+                currentFilter.type = btn.getAttribute("data-filter-type") || "all";
+                currentFilter.value = btn.getAttribute("data-filter-value") || "ALL";
+
+                renderRecent();
+            });
+        });
+    }
+
     window.onload = function() {
         document.getElementById("searchBtn").addEventListener("click", searchSn);
+
         document.getElementById("clearBtn").addEventListener("click", function() {
             document.getElementById("snInput").value = "";
         });
+
         document.getElementById("modalCloseBtn").addEventListener("click", closeModal);
+
         document.getElementById("snInput").addEventListener("keydown", function(event) {
             if (event.key === "Enter") {
                 searchSn();
             }
         });
+
         document.getElementById("detailModal").addEventListener("click", function(event) {
             if (event.target.id === "detailModal") {
                 closeModal();
             }
         });
+
         document.addEventListener("keydown", function(event) {
             if (event.key === "Escape") {
                 closeModal();
             }
         });
+
+        bindFilters();
 
         refreshAll();
 
@@ -1097,4 +1269,3 @@
 
 </body>
 </html>
-```
