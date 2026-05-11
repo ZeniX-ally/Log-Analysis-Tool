@@ -1,1540 +1,1203 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-<meta charset="UTF-8">
-<title>FCT 测试日志分析平台</title>
-
-<style>
-* {
-    box-sizing: border-box;
-}
-
-html,
-body {
-    margin: 0;
-    padding: 0;
-    background: #0e1116;
-    color: #d8dee9;
-    font-family: "Microsoft YaHei", "Segoe UI", Arial, sans-serif;
-    font-size: 14px;
-}
-
-body {
-    min-height: 100vh;
-}
-
-.app {
-    display: flex;
-    min-height: 100vh;
-}
-
-.sidebar {
-    width: 232px;
-    background: #141922;
-    border-right: 1px solid #252c36;
-    padding: 18px 14px;
-    flex-shrink: 0;
-}
-
-.logo {
-    color: #f3f6fa;
-    font-size: 17px;
-    font-weight: 700;
-    margin-bottom: 6px;
-    letter-spacing: 0.3px;
-}
-
-.logo-sub {
-    color: #7e8897;
-    font-size: 12px;
-    margin-bottom: 24px;
-}
-
-.nav-btn {
-    width: 100%;
-    height: 40px;
-    margin-bottom: 8px;
-    padding: 0 12px;
-    background: transparent;
-    color: #a9b3c1;
-    border: 1px solid transparent;
-    text-align: left;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 14px;
-}
-
-.nav-btn:hover {
-    background: #1b222d;
-    color: #ffffff;
-}
-
-.nav-btn.active {
-    background: #202936;
-    border-color: #354254;
-    color: #ffffff;
-}
-
-.main {
-    flex: 1;
-    padding: 22px 26px;
-    overflow: auto;
-}
-
-.panel {
-    display: none;
-}
-
-.panel.active {
-    display: block;
-}
-
-.page-head {
-    margin-bottom: 18px;
-}
-
-.page-title {
-    font-size: 22px;
-    font-weight: 700;
-    color: #f2f5f9;
-    margin-bottom: 6px;
-}
-
-.page-desc {
-    font-size: 13px;
-    color: #8792a0;
-}
-
-.card {
-    background: #161b23;
-    border: 1px solid #27303b;
-    border-radius: 8px;
-    padding: 16px;
-    margin-bottom: 16px;
-}
-
-.card-title {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    color: #f2f5f9;
-    font-size: 15px;
-    font-weight: 700;
-    margin-bottom: 13px;
-}
-
-.card-subtitle {
-    color: #7f8a99;
-    font-size: 12px;
-    font-weight: 400;
-}
-
-.search-row {
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-}
-
-input {
-    width: 380px;
-    max-width: 100%;
-    height: 38px;
-    padding: 0 12px;
-    background: #0f141b;
-    border: 1px solid #313b48;
-    color: #ffffff;
-    border-radius: 5px;
-    outline: none;
-    font-size: 14px;
-}
-
-input:focus {
-    border-color: #4a5c72;
-}
-
-button {
-    height: 38px;
-    padding: 0 15px;
-    background: #2b3543;
-    border: 1px solid #3b4656;
-    color: #ffffff;
-    border-radius: 5px;
-    cursor: pointer;
-    font-size: 14px;
-}
-
-button:hover {
-    background: #354254;
-}
-
-.grid-4 {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(150px, 1fr));
-    gap: 14px;
-    margin-bottom: 16px;
-}
-
-.grid-6 {
-    display: grid;
-    grid-template-columns: repeat(6, minmax(120px, 1fr));
-    gap: 14px;
-    margin-bottom: 16px;
-}
-
-.metric {
-    background: #111720;
-    border: 1px solid #27303b;
-    border-radius: 8px;
-    padding: 14px;
-}
-
-.metric-label {
-    font-size: 12px;
-    color: #8a96a6;
-    margin-bottom: 8px;
-}
-
-.metric-value {
-    font-size: 26px;
-    font-weight: 700;
-    color: #f2f5f9;
-}
-
-.metric-pass {
-    color: #63d58f;
-}
-
-.metric-fail {
-    color: #ff6b6b;
-}
-
-.metric-error {
-    color: #ff9f43;
-}
-
-.metric-abort {
-    color: #8ecbff;
-}
-
-.metric-pause {
-    color: #cfd7e3;
-}
-
-.metric-rate {
-    color: #f1c45b;
-}
-
-.table-wrap {
-    width: 100%;
-    overflow-x: auto;
-}
-
-.scroll-table {
-    max-height: 380px;
-    overflow-y: auto;
-    border: 1px solid #222b36;
-    border-radius: 6px;
-}
-
-.scroll-table table {
-    margin: 0;
-}
-
-.scroll-table thead th {
-    position: sticky;
-    top: 0;
-    z-index: 2;
-    background: #161b23;
-}
-
-table {
-    width: 100%;
-    border-collapse: collapse;
-    table-layout: fixed;
-}
-
-th {
-    height: 34px;
-    padding: 8px 10px;
-    color: #8b96a6;
-    font-size: 12px;
-    font-weight: 600;
-    text-align: left;
-    border-bottom: 1px solid #2b3440;
-    white-space: nowrap;
-}
-
-td {
-    height: 36px;
-    padding: 8px 10px;
-    color: #d6dde7;
-    font-size: 13px;
-    border-bottom: 1px solid #222a34;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-tr:hover td {
-    background: #1a212b;
-}
-
-.clickable-row {
-    cursor: pointer;
-}
-
-.col-sn {
-    width: 220px;
-}
-
-.col-model {
-    width: 110px;
-}
-
-.col-result {
-    width: 110px;
-}
-
-.col-source {
-    width: 90px;
-}
-
-.col-file {
-    width: 280px;
-}
-
-.col-time {
-    width: 190px;
-}
-
-.result-pill {
-    display: inline-block;
-    min-width: 64px;
-    padding: 3px 8px;
-    border-radius: 999px;
-    text-align: center;
-    font-size: 12px;
-    font-weight: 700;
-}
-
-.result-pass {
-    background: rgba(99, 213, 143, 0.14);
-    color: #63d58f;
-    border: 1px solid rgba(99, 213, 143, 0.3);
-}
-
-.result-fail {
-    background: rgba(255, 107, 107, 0.14);
-    color: #ff6b6b;
-    border: 1px solid rgba(255, 107, 107, 0.3);
-}
-
-.result-error {
-    background: rgba(255, 159, 67, 0.14);
-    color: #ff9f43;
-    border: 1px solid rgba(255, 159, 67, 0.3);
-}
-
-.result-abort {
-    background: rgba(96, 169, 255, 0.14);
-    color: #8ecbff;
-    border: 1px solid rgba(96, 169, 255, 0.3);
-}
-
-.result-pause {
-    background: rgba(160, 160, 160, 0.14);
-    color: #cfd7e3;
-    border: 1px solid rgba(160, 160, 160, 0.3);
-}
-
-.result-unknown {
-    background: rgba(241, 196, 91, 0.14);
-    color: #f1c45b;
-    border: 1px solid rgba(241, 196, 91, 0.3);
-}
-
-.badge {
-    display: inline-block;
-    min-width: 54px;
-    padding: 3px 8px;
-    border-radius: 999px;
-    text-align: center;
-    font-size: 12px;
-    font-weight: 700;
-}
-
-.badge-high {
-    background: rgba(255, 107, 107, 0.14);
-    color: #ff7a7a;
-    border: 1px solid rgba(255, 107, 107, 0.3);
-}
-
-.badge-medium {
-    background: rgba(241, 196, 91, 0.14);
-    color: #ffd36d;
-    border: 1px solid rgba(241, 196, 91, 0.3);
-}
-
-.badge-low {
-    background: rgba(96, 169, 255, 0.14);
-    color: #8ecbff;
-    border: 1px solid rgba(96, 169, 255, 0.3);
-}
-
-.status-online {
-    color: #63d58f;
-    font-weight: 700;
-}
-
-.status-offline {
-    color: #ff6b6b;
-    font-weight: 700;
-}
-
-.status-warning {
-    color: #f1c45b;
-    font-weight: 700;
-}
-
-.status-normal {
-    color: #63d58f;
-}
-
-.canvas-box {
-    height: 280px;
-    background: #111720;
-    border: 1px solid #27303b;
-    border-radius: 8px;
-    padding: 10px;
-}
-
-canvas {
-    width: 100%;
-    height: 100%;
-}
-
-.modal-mask {
-    position: fixed;
-    inset: 0;
-    display: none;
-    align-items: center;
-    justify-content: center;
-    background: rgba(0, 0, 0, 0.62);
-    z-index: 999;
-}
-
-.modal {
-    width: 1180px;
-    max-width: 94vw;
-    max-height: 88vh;
-    background: #151a22;
-    border: 1px solid #3a4656;
-    border-radius: 9px;
-    box-shadow: 0 18px 60px rgba(0, 0, 0, 0.45);
-    display: flex;
-    flex-direction: column;
-}
-
-.modal-head {
-    height: 52px;
-    padding: 0 16px;
-    border-bottom: 1px solid #27303b;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-}
-
-.modal-title {
-    color: #f2f5f9;
-    font-size: 16px;
-    font-weight: 700;
-}
-
-.modal-body {
-    padding: 16px;
-    overflow-y: auto;
-}
-
-.modal-grid {
-    display: grid;
-    grid-template-columns: 120px 1fr 120px 1fr;
-    gap: 9px 12px;
-    margin-bottom: 14px;
-}
-
-.modal-label {
-    color: #8b96a6;
-    font-size: 13px;
-}
-
-.modal-value {
-    color: #dbe2ec;
-    font-size: 13px;
-    word-break: break-all;
-    line-height: 1.55;
-}
-
-.section-title {
-    color: #f2f5f9;
-    font-size: 15px;
-    font-weight: 700;
-    margin: 16px 0 10px;
-}
-
-.item-card {
-    background: #10161f;
-    border: 1px solid #27303b;
-    border-radius: 8px;
-    padding: 12px;
-    margin-bottom: 12px;
-}
-
-.item-head {
-    display: flex;
-    justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 10px;
-}
-
-.item-name {
-    color: #f2f5f9;
-    font-weight: 700;
-    line-height: 1.5;
-}
-
-.item-grid {
-    display: grid;
-    grid-template-columns: 115px 1fr 115px 1fr;
-    gap: 8px 12px;
-}
-
-.hint {
-    color: #c7d0dc;
-    line-height: 1.65;
-    white-space: normal;
-}
-
-.empty {
-    color: #7f8a99;
-    padding: 16px 0;
-    font-size: 13px;
-}
-
-.note {
-    color: #6f7b8b;
-    font-size: 12px;
-    margin-top: 10px;
-}
-
-.dashboard-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 16px;
-}
-
-@media (max-width: 1200px) {
-    .dashboard-grid {
-        grid-template-columns: 1fr;
-    }
-
-    .grid-6 {
-        grid-template-columns: repeat(3, minmax(120px, 1fr));
-    }
-}
-
-@media (max-width: 1100px) {
-    .grid-4 {
-        grid-template-columns: repeat(2, minmax(150px, 1fr));
-    }
-
-    .modal-grid,
-    .item-grid {
-        grid-template-columns: 110px 1fr;
-    }
-}
-
-@media (max-width: 760px) {
-    .app {
-        flex-direction: column;
-    }
-
-    .sidebar {
-        width: 100%;
-        border-right: none;
-        border-bottom: 1px solid #252c36;
-    }
-
-    .main {
-        padding: 16px;
-    }
-
-    .grid-4,
-    .grid-6 {
-        grid-template-columns: 1fr;
-    }
-}
-</style>
-</head>
-
-<body>
-<div class="app">
-    <aside class="sidebar">
-        <div class="logo">FCT 测试日志分析平台</div>
-        <div class="logo-sub">XML / Spec / 点位 / 仪表链路</div>
-
-        <button class="nav-btn active" onclick="switchPanel('dashboard', this)">综合看板</button>
-        <button class="nav-btn" onclick="switchPanel('analysis', this)">XML 分析</button>
-        <button class="nav-btn" onclick="switchPanel('machine', this)">机台监控</button>
-    </aside>
-
-    <main class="main">
-        <section id="dashboard" class="panel active">
-            <div class="page-head">
-                <div class="page-title">综合看板</div>
-                <div class="page-desc">用于 SN 查询、Top Fail / Top Error 查看，以及最近测试记录追踪。</div>
-            </div>
-
-            <div class="card">
-                <div class="card-title">
-                    <span>SN 查询</span>
-                    <span class="card-subtitle">支持完整 SN 或部分 SN 查询</span>
-                </div>
-
-                <div class="search-row">
-                    <input id="snInput" placeholder="请输入 SN，例如 E3002781...">
-                    <button onclick="searchSn()">查询</button>
-                    <button onclick="refreshDashboard()">刷新</button>
-                </div>
-            </div>
-
-            <div class="dashboard-grid">
-                <div class="card">
-                    <div class="card-title">
-                        <span>Top Fail 高频失败项</span>
-                        <span class="card-subtitle">仅统计 FAIL，不统计 ERROR / 中断 / 暂停</span>
-                    </div>
-
-                    <div class="table-wrap">
+    <meta charset="UTF"></div>    <meta charset="UTF-8">
+                    <div class="table-scroll">
                         <table>
                             <thead>
-                                <tr>
-                                    <th>失败项</th>
-                                    <th style="width:120px;">次数</th>
-                                </tr>
-                            </thead>
-                            <tbody id="topFailTable"></tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <div class="card">
-                    <div class="card-title">
-                        <span>Top Error 异常项</span>
-                        <span class="card-subtitle">从最近记录详情中统计 ERROR 测试项</span>
-                    </div>
-
-                    <div class="table-wrap">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>异常项</th>
-                                    <th style="width:120px;">次数</th>
-                                </tr>
-                            </thead>
-                            <tbody id="topErrorTable"></tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-
-            <div class="card">
-                <div class="card-title">
-                    <span>最近测试记录</span>
-                    <span class="card-subtitle">固定高度滚动，点击记录查看工程报告</span>
-                </div>
-
-                <div class="scroll-table">
-                    <table>
-                        <thead>
                             <tr>
-                                <th class="col-sn">SN</th>
-                                <th class="col-model">Model</th>
-                                <th class="col-result">Result</th>
-                                <th class="col-source">Source</th>
-                                <th class="col-file">File</th>
-                                <th class="col-time">测试时间</th>
-                            </tr>
-                        </thead>
-                        <tbody id="recentTable"></tbody>
-                    </table>
-                </div>
-
-                <div class="note">说明：File / Path / Source / SN / Model / Result 保持原始字段，便于和 XML 文件及服务器路径对应。</div>
-            </div>
-        </section>
-
-        <section id="analysis" class="panel">
-            <div class="page-head">
-                <div class="page-title">XML 分析</div>
-                <div class="page-desc">用于统计 Fail 趋势、型号分布、重复失败项，以及同时间窗口高频同类 Fail 风险提示。</div>
-            </div>
-
-            <div class="grid-6">
-                <div class="metric">
-                    <div class="metric-label">总测试数</div>
-                    <div class="metric-value" id="metricTotal">0</div>
-                </div>
-
-                <div class="metric">
-                    <div class="metric-label">PASS 数量</div>
-                    <div class="metric-value metric-pass" id="metricPass">0</div>
-                </div>
-
-                <div class="metric">
-                    <div class="metric-label">FAIL 数量</div>
-                    <div class="metric-value metric-fail" id="metricFail">0</div>
-                </div>
-
-                <div class="metric">
-                    <div class="metric-label">ERROR 数量</div>
-                    <div class="metric-value metric-error" id="metricError">0</div>
-                </div>
-
-                <div class="metric">
-                    <div class="metric-label">中断 / 暂停</div>
-                    <div class="metric-value metric-abort" id="metricAbortPause">0</div>
-                </div>
-
-                <div class="metric">
-                    <div class="metric-label">Fail Rate</div>
-                    <div class="metric-value metric-rate" id="metricFailRate">0%</div>
-                </div>
-            </div>
-
-            <div class="card">
-                <div class="card-title">
-                    <span>Fail 趋势</span>
-                    <span class="card-subtitle">按日期统计 Fail 数量</span>
-                </div>
-
-                <div class="canvas-box">
-                    <canvas id="trendCanvas"></canvas>
-                </div>
-            </div>
-
-            <div class="card">
-                <div class="card-title">
-                    <span>型号统计</span>
-                    <span class="card-subtitle">按 Model 汇总 PASS / FAIL / Unknown</span>
-                </div>
-
-                <div class="table-wrap">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Model</th>
-                                <th>总数</th>
-                                <th>PASS</th>
-                                <th>FAIL</th>
-                                <th>Unknown</th>
-                                <th>Fail Rate</th>
-                            </tr>
-                        </thead>
-                        <tbody id="modelSummaryTable"></tbody>
-                    </table>
-                </div>
-            </div>
-
-            <div class="card">
-                <div class="card-title">
-                    <span>预警列表</span>
-                    <span class="card-subtitle">基于重复 Fail 次数生成初步分析提示</span>
-                </div>
-
-                <div class="table-wrap">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th style="width:90px;">等级</th>
-                                <th>失败项</th>
-                                <th style="width:100px;">次数</th>
-                                <th>说明</th>
-                            </tr>
-                        </thead>
-                        <tbody id="warningTable"></tbody>
-                    </table>
-                </div>
-            </div>
-
-            <div class="card">
-                <div class="card-title">
-                    <span>同时间窗口高频同类 Fail 风险提示</span>
-                    <span class="card-subtitle">仅做分析提示，不作为机台故障结论</span>
-                </div>
-
-                <div class="table-wrap">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th style="width:80px;">等级</th>
-                                <th style="width:260px;">时间窗口</th>
+                                <th>时间窗口</th>
                                 <th>测试项</th>
-                                <th>点位/信号</th>
-                                <th style="width:100px;">仪表</th>
-                                <th style="width:120px;">次数/SN</th>
-                                <th>分析提示</th>
+                                <th>次数</th>
+                                <th>SN数</th>
+                                <th>等级</th>
                             </tr>
-                        </thead>
-                        <tbody id="stationRiskTable"></tbody>
-                    </table>
+                            </thead>
+                            <tbody id="riskBody">
+                            <tr><td colspan="5">加载中...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
-
-                <div class="note">说明：此模块只提示“可能与测试系统、夹具、探针、仪表链路相关”，不输出确定性结论。</div>
             </div>
         </section>
 
-        <section id="machine" class="panel">
-            <div class="page-head">
-                <div class="page-title">机台监控</div>
-                <div class="page-desc">显示机台在线状态、电压、电流、温度和运行状态。</div>
+        <section id="machinePanel" class="panel">
+            <div class="cards">
+                <div class="card">
+                    <div class="card-name">机台总数</div>
+                    <div class="card-value" id="machineTotal">0</div>
+                    <div class="card-desc">Telemetry machines</div>
+                </div>
+                <div class="card">
+                    <div class="card-name">ONLINE</div>
+                    <div class="card-value status-pass" id="machineOnline">0</div>
+                    <div class="card-desc">5 秒内收到推送</div>
+                </div>
+                <div class="card">
+                    <div class="card-name">STALE</div>
+                    <div class="card-value status-interrupt" id="machineStale">0</div>
+                    <div class="card-desc">5-30 秒未更新</div>
+                </div>
+                <div class="card">
+                    <div class="card-name">OFFLINE</div>
+                    <div class="card-value status-fail" id="machineOffline">0</div>
+                    <div class="card-desc">超过 30 秒未更新</div>
+                </div>
             </div>
 
-            <div class="card">
-                <div class="card-title">
-                    <span>实时机台状态</span>
-                    <span class="card-subtitle">默认自动刷新</span>
-                </div>
-
-                <div class="table-wrap">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>机台编号</th>
-                                <th>在线状态</th>
-                                <th>电压</th>
-                                <th>电流</th>
-                                <th>温度</th>
-                                <th>运行状态</th>
-                                <th>最后更新时间</th>
-                            </tr>
-                        </thead>
-                        <tbody id="machineTable"></tbody>
-                    </table>
+            <div class="box">
+                <div class="box-title">机台状态卡片</div>
+                <div id="machineGrid" class="machine-grid">
+                    <div class="muted">等待 telemetry...</div>
                 </div>
             </div>
         </section>
     </main>
 </div>
 
-<div id="modalMask" class="modal-mask" onclick="closeModal()">
-    <div class="modal" onclick="event.stopPropagation()">
-        <div class="modal-head">
-            <div class="modal-title" id="modalTitle">测试记录工程报告</div>
-            <button onclick="closeModal()">关闭</button>
-        </div>
-        <div class="modal-body" id="modalContent"></div>
-    </div>
-</div>
-
 <script>
-function normalizeStatus(raw) {
-    const value = String(raw || "").trim().toUpperCase();
+let __RECENT_RECORD_CACHE__ = [];
 
-    if (["PASS", "PASSED", "OK", "SUCCESS", "TRUE"].includes(value)) {
-        return "PASS";
+function switchPanel(panelId, el) {
+    document.querySelectorAll(".panel").forEach(p => p.classList.remove("active"));
+    document.querySelectorAll(".nav-item").forEach(n => n.classList.remove("active"));
+    document.getElementById(panelId).classList.add("active");
+    el.classList.add("active");
+
+    if (panelId === "analysisPanel") {
+        loadAnalysis();
     }
 
-    if (["FAIL", "FAILED", "NG", "FALSE"].includes(value)) {
-        return "FAIL";
+    if (panelId === "machinePanel") {
+        loadMachines();
     }
-
-    if (["ERROR", "ERR", "EXCEPTION"].includes(value)) {
-        return "ERROR";
-    }
-
-    if (["ABORT", "ABORTED", "INTERRUPT", "INTERRUPTED", "TERMINATED", "STOP", "STOPPED", "CANCEL", "CANCELED", "CANCELLED"].includes(value)) {
-        return "ABORT";
-    }
-
-    if (["PAUSE", "PAUSED", "SUSPEND", "SUSPENDED", "SKIP", "SKIPPED", "HOLD"].includes(value)) {
-        return "PAUSE";
-    }
-
-    return "UNKNOWN";
-}
-
-function getResultPill(rawStatus) {
-    const status = normalizeStatus(rawStatus);
-
-    if (status === "PASS") {
-        return '<span class="result-pill result-pass">PASS</span>';
-    }
-
-    if (status === "FAIL") {
-        return '<span class="result-pill result-fail">FAIL</span>';
-    }
-
-    if (status === "ERROR") {
-        return '<span class="result-pill result-error">ERROR</span>';
-    }
-
-    if (status === "ABORT") {
-        return '<span class="result-pill result-abort">中断</span>';
-    }
-
-    if (status === "PAUSE") {
-        return '<span class="result-pill result-pause">暂停</span>';
-    }
-
-    return '<span class="result-pill result-unknown">UNKNOWN</span>';
-}
-
-function getItemStatusPill(rawStatus) {
-    return getResultPill(rawStatus);
 }
 
 function escapeHtml(value) {
     return String(value ?? "")
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;")
-        .replaceAll("'", "&#039;");
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
 }
 
-function shortText(value, maxLength) {
-    const text = String(value ?? "");
+function normalizeResult(result) {
+    const raw = String(result || "").trim();
+    const upper = raw.toUpperCase();
 
-    if (text.length <= maxLength) {
-        return text;
+    if (upper === "PASS" || upper === "PASSED") {
+        return "PASS";
     }
 
-    return text.slice(0, maxLength) + "...";
-}
-
-function switchPanel(panelId, btn) {
-    document.querySelectorAll(".panel").forEach(function(panel) {
-        panel.classList.remove("active");
-    });
-
-    document.querySelectorAll(".nav-btn").forEach(function(button) {
-        button.classList.remove("active");
-    });
-
-    document.getElementById(panelId).classList.add("active");
-    btn.classList.add("active");
-
-    if (panelId === "analysis") {
-        loadAnalysis();
-        loadStationRisk();
-        loadAnalysisStatusSummary();
+    if (upper === "FAIL" || upper === "FAILED") {
+        return "FAIL";
     }
 
-    if (panelId === "machine") {
-        loadMachineStatus();
+    return "中断";
+}
+
+function resultPill(result) {
+    const r = normalizeResult(result);
+
+    if (r === "PASS") {
+        return `<span class="pill pill-pass">PASS</span>`;
+    }
+
+    if (r === "FAIL") {
+        return `<span class="pill pill-fail">FAIL</span>`;
+    }
+
+    return `<span class="pill pill-interrupt">中断</span>`;
+}
+
+function getResultClass(result) {
+    const r = normalizeResult(result);
+
+    if (r === "PASS") {
+        return "status-pass";
+    }
+
+    if (r === "FAIL") {
+        return "status-fail";
+    }
+
+    return "status-interrupt";
+}
+
+function getFirstIssue(record) {
+    const result = normalizeResult(record.business_result || record.result);
+
+    if (result === "FAIL") {
+        const failItems = record.fail_items || [];
+        if (failItems.length > 0) {
+            return failItems[0].name || failItems[0].raw_name || "FAIL";
+        }
+        return "FAIL";
+    }
+
+    if (result === "中断") {
+        return "测试未完整执行";
+    }
+
+    return "-";
+}
+
+function cacheRecentRecords(records) {
+    if (Array.isArray(records)) {
+        __RECENT_RECORD_CACHE__ = records;
     }
 }
 
-function refreshDashboard() {
-    loadRecent();
-    loadTopFail();
-    loadTopError();
+function getRecordKey(record) {
+    if (!record) {
+        return "";
+    }
+
+    return record.source_path || record.relative_path || record.source_file || record.sn || "";
 }
 
-function loadRecent() {
-    fetch("/api/recent?limit=100")
-        .then(function(response) {
-            return response.json();
-        })
-        .then(function(records) {
-            const table = document.getElementById("recentTable");
-            let html = "";
+async function loadHealth() {
+    try {
+        const resp = await fetch("/api/health");
+        const data = await resp.json();
 
-            if (!records || records.length === 0) {
-                table.innerHTML = '<tr><td colspan="6"><div class="empty">暂无测试记录。请先将 XML 文件放入 data/logs 目录。</div></td></tr>';
-                return;
-            }
-
-            records.forEach(function(record) {
-                const encodedPath = encodeURIComponent(record.file_path || "");
-                const snShort = shortText(record.sn, 24);
-                const fileShort = shortText(record.file_name, 34);
-
-                html += '<tr class="clickable-row" data-path="' + escapeHtml(encodedPath) + '" onclick="loadRecordDetailFromRow(this)">' +
-                    '<td title="' + escapeHtml(record.sn) + '">' + escapeHtml(snShort) + '</td>' +
-                    '<td>' + escapeHtml(record.model) + '</td>' +
-                    '<td>' + getResultPill(record.result) + '</td>' +
-                    '<td>' + escapeHtml(record.source) + '</td>' +
-                    '<td title="' + escapeHtml(record.file_name) + '">' + escapeHtml(fileShort) + '</td>' +
-                    '<td>' + escapeHtml(record.test_time) + '</td>' +
-                '</tr>';
-            });
-
-            table.innerHTML = html;
-        })
-        .catch(function(error) {
-            document.getElementById("recentTable").innerHTML =
-                '<tr><td colspan="6"><div class="empty">最近测试记录加载失败：' + escapeHtml(error) + '</div></td></tr>';
-        });
+        document.getElementById("serverInfo").innerHTML =
+            `Server Time：${escapeHtml(data.server_time || "-")}<br>` +
+            `Parser：${data.parser_loaded ? "OK" : "NG"}<br>` +
+            `Log Dir：${escapeHtml(data.log_dir || "-")}`;
+    } catch (err) {
+        document.getElementById("serverInfo").innerHTML = "后端连接失败";
+    }
 }
 
-function loadRecordDetailFromRow(row) {
-    const encodedPath = row.getAttribute("data-path") || "";
-    loadRecordDetail(encodedPath);
+async function loadStats() {
+    try {
+        const resp = await fetch("/api/stats");
+        const stats = await resp.json();
+
+        document.getElementById("statTotal").textContent = stats.total ?? 0;
+        document.getElementById("statPass").textContent = stats.pass ?? 0;
+        document.getElementById("statFail").textContent = stats.fail ?? 0;
+        document.getElementById("statInterrupt").textContent = stats.interrupt ?? 0;
+    } catch (err) {
+        console.error(err);
+    }
 }
 
-function loadRecordDetail(encodedPath) {
-    fetch("/api/record_detail?file_path=" + encodedPath)
-        .then(function(response) {
-            return response.json();
-        })
-        .then(function(payload) {
-            if (!payload.success) {
-                alert(payload.message || "记录详情加载失败");
-                return;
-            }
+async function loadTopFail() {
+    const body = document.getElementById("topFailBody");
 
-            openRecordModal("测试记录工程报告", payload.data);
-        })
-        .catch(function(error) {
-            alert("记录详情加载失败：" + error);
-        });
+    try {
+        const resp = await fetch("/api/top_fail?limit=10");
+        const items = await resp.json();
+
+        if (!Array.isArray(items) || items.length === 0) {
+            body.innerHTML = `<tr><td colspan="3" class="muted">暂无 FAIL 项</td></tr>`;
+            return;
+        }
+
+        body.innerHTML = items.map(item => {
+            const level = item.warning_level || "LOW";
+            const cls = level === "HIGH" ? "level-high" : level === "MEDIUM" ? "level-medium" : "level-low";
+
+            return `
+                <tr>
+                    <td class="truncate">${escapeHtml(item.item || "-")}</td>
+                    <td>${escapeHtml(item.count || 0)}</td>
+                    <td class="${cls}">${escapeHtml(level)}</td>
+                </tr>
+            `;
+        }).join("");
+    } catch (err) {
+        body.innerHTML = `<tr><td colspan="3">Top Fail 加载失败：${escapeHtml(err.message)}</td></tr>`;
+    }
 }
 
-function loadTopFail() {
-    fetch("/api/top_fail")
-        .then(function(response) {
-            return response.json();
-        })
-        .then(function(items) {
-            const table = document.getElementById("topFailTable");
-            let html = "";
+async function loadRecentRecords() {
+    const body = document.getElementById("recentBody");
 
-            if (!items || items.length === 0) {
-                table.innerHTML = '<tr><td colspan="2"><div class="empty">暂无 Fail 数据。</div></td></tr>';
-                return;
-            }
+    try {
+        const resp = await fetch("/api/recent?limit=80");
+        const records = await resp.json();
 
-            items.forEach(function(item) {
-                html += '<tr>' +
-                    '<td title="' + escapeHtml(item.item) + '">' + escapeHtml(item.item) + '</td>' +
-                    '<td>' + escapeHtml(item.count) + '</td>' +
-                '</tr>';
-            });
+        cacheRecentRecords(records);
 
-            table.innerHTML = html;
-        })
-        .catch(function(error) {
-            document.getElementById("topFailTable").innerHTML =
-                '<tr><td colspan="2"><div class="empty">Top Fail 加载失败：' + escapeHtml(error) + '</div></td></tr>';
-        });
+        if (!Array.isArray(records) || records.length === 0) {
+            body.innerHTML = `<tr><td colspan="9" class="muted">暂无测试记录</td></tr>`;
+            return;
+        }
+
+        body.innerHTML = records.map((record, index) => {
+            return `
+                <tr class="recent-row" onclick="openRecordDetail(__RECENT_RECORD_CACHE__[${index}], ${index})">
+                    <td>${index + 1}</td>
+                    <td>${escapeHtml(record.test_mode || "-")}</td>
+                    <td>${escapeHtml(record.model || "-")}</td>
+                    <td class="truncate">${escapeHtml(record.sn || "-")}</td>
+                    <td>${resultPill(record.business_result || record.result)}</td>
+                    <td class="truncate">${escapeHtml(getFirstIssue(record))}</td>
+                    <td>${escapeHtml(record.time || "-")}</td>
+                    <td class="truncate">${escapeHtml(record.source_file || "-")}</td>
+                    <td class="truncate">${escapeHtml(record.relative_path || "-")}</td>
+                </tr>
+            `;
+        }).join("");
+    } catch (err) {
+        body.innerHTML = `<tr><td colspan="9">最近测试记录加载失败：${escapeHtml(err.message)}</td></tr>`;
+    }
 }
 
-function loadTopError() {
-    fetch("/api/recent?limit=80")
-        .then(function(response) {
-            return response.json();
-        })
-        .then(function(records) {
-            const table = document.getElementById("topErrorTable");
-
-            if (!records || records.length === 0) {
-                table.innerHTML = '<tr><td colspan="2"><div class="empty">暂无 Error 数据。</div></td></tr>';
-                return;
-            }
-
-            const paths = records
-                .map(function(record) {
-                    return record.file_path || "";
-                })
-                .filter(function(path) {
-                    return path !== "";
-                })
-                .slice(0, 30);
-
-            const tasks = paths.map(function(path) {
-                return fetch("/api/record_detail?file_path=" + encodeURIComponent(path))
-                    .then(function(response) {
-                        return response.json();
-                    })
-                    .catch(function() {
-                        return null;
-                    });
-            });
-
-            Promise.all(tasks).then(function(results) {
-                const counter = {};
-
-                results.forEach(function(payload) {
-                    if (!payload || !payload.success || !payload.data) {
-                        return;
-                    }
-
-                    const items = Array.isArray(payload.data.test_items) ? payload.data.test_items : [];
-
-                    items.forEach(function(item) {
-                        if (normalizeStatus(item.status) !== "ERROR") {
-                            return;
-                        }
-
-                        const key = item.name || item.raw_name || "UNKNOWN_ERROR_ITEM";
-                        counter[key] = (counter[key] || 0) + 1;
-                    });
-                });
-
-                const rows = Object.keys(counter)
-                    .map(function(key) {
-                        return {
-                            item: key,
-                            count: counter[key]
-                        };
-                    })
-                    .sort(function(a, b) {
-                        return b.count - a.count;
-                    })
-                    .slice(0, 10);
-
-                if (rows.length === 0) {
-                    table.innerHTML = '<tr><td colspan="2"><div class="empty">暂无 Error 测试项。</div></td></tr>';
-                    return;
-                }
-
-                let html = "";
-
-                rows.forEach(function(row) {
-                    html += '<tr>' +
-                        '<td title="' + escapeHtml(row.item) + '">' + escapeHtml(row.item) + '</td>' +
-                        '<td>' + escapeHtml(row.count) + '</td>' +
-                    '</tr>';
-                });
-
-                table.innerHTML = html;
-            });
-        })
-        .catch(function(error) {
-            document.getElementById("topErrorTable").innerHTML =
-                '<tr><td colspan="2"><div class="empty">Top Error 加载失败：' + escapeHtml(error) + '</div></td></tr>';
-        });
-}
-
-function searchSn() {
-    const sn = document.getElementById("snInput").value.trim();
+async function searchSN() {
+    const input = document.getElementById("snInput");
+    const resultBox = document.getElementById("searchResult");
+    const sn = input.value.trim();
 
     if (!sn) {
-        alert("请输入 SN");
+        resultBox.innerHTML = "请输入 SN / SN 后缀 / 文件名关键字";
         return;
     }
 
-    fetch("/api/search?sn=" + encodeURIComponent(sn))
-        .then(function(response) {
-            return response.json();
-        })
-        .then(function(payload) {
-            if (!payload.success) {
-                alert(payload.message || "未找到对应 SN");
-                return;
-            }
+    try {
+        const resp = await fetch("/api/search?sn=" + encodeURIComponent(sn));
+        const data = await resp.json();
 
-            openRecordModal("SN 查询工程报告", payload.data);
-        })
-        .catch(function(error) {
-            alert("SN 查询失败：" + error);
-        });
+        if (!data.ok || !data.record) {
+            resultBox.innerHTML = escapeHtml(data.message || "未找到匹配记录");
+            return;
+        }
+
+        const record = data.record;
+
+        resultBox.innerHTML = `
+            <div style="line-height: 1.8;">
+                <div><b>SN：</b>${escapeHtml(record.sn || "-")}</div>
+                <div><b>Model：</b>${escapeHtml(record.model || "-")}</div>
+                <div><b>Result：</b>${resultPill(record.business_result || record.result)}</div>
+                <div><b>File：</b>${escapeHtml(record.source_file || "-")}</div>
+                <button style="margin-top: 10px;" onclick='openRecordDetailFromSearch(${JSON.stringify(record).replace(/'/g, "&#039;")})'>查看工程报告</button>
+            </div>
+        `;
+    } catch (err) {
+        resultBox.innerHTML = "查询失败：" + escapeHtml(err.message);
+    }
 }
 
-function openRecordModal(title, record) {
-    document.getElementById("modalTitle").innerText = title;
+function openRecordDetailFromSearch(record) {
+    openRecordDetail(record, -1);
+}
 
-    const testItems = Array.isArray(record.test_items) ? record.test_items : [];
+async function openRecordDetail(recordOrKey, index) {
+    let record = null;
+    let key = "";
 
-    const abnormalItems = testItems.filter(function(item) {
-        const status = normalizeStatus(item.status);
-        return status === "FAIL" || status === "ERROR";
-    });
-
-    const displayItems = abnormalItems.length > 0 ? abnormalItems : testItems.slice(0, 80);
-    const failItemsText = Array.isArray(record.fail_items) ? record.fail_items.join(", ") : "";
-
-    let itemsHtml = "";
-
-    if (displayItems.length === 0) {
-        itemsHtml = '<div class="empty">暂无测试项明细。若这是最近记录摘要，请通过 SN 查询或点击记录详情加载完整 XML 解析结果。</div>';
+    if (typeof recordOrKey === "object" && recordOrKey !== null) {
+        record = recordOrKey;
+        key = getRecordKey(record);
     } else {
-        displayItems.forEach(function(item, index) {
-            itemsHtml += '<div class="item-card">' +
-                '<div class="item-head">' +
-                    '<div class="item-name">' + (index + 1) + '. ' + escapeHtml(item.name || item.raw_name || "-") + '</div>' +
-                    '<div>' + getItemStatusPill(item.status) + '</div>' +
-                '</div>' +
-
-                '<div class="item-grid">' +
-                    '<div class="modal-label">章节</div><div class="modal-value">' + escapeHtml(item.section || "-") + '</div>' +
-                    '<div class="modal-label">点位/信号</div><div class="modal-value">' + escapeHtml(item.signal || "-") + '</div>' +
-                    '<div class="modal-label">参考点</div><div class="modal-value">' + escapeHtml(item.reference_point || "-") + '</div>' +
-                    '<div class="modal-label">仪表类型</div><div class="modal-value">' + escapeHtml(item.instrument || "-") + '</div>' +
-                    '<div class="modal-label">仪表设备</div><div class="modal-value">' + escapeHtml(item.instrument_device || "-") + '</div>' +
-                    '<div class="modal-label">标称范围</div><div class="modal-value">' + escapeHtml(item.nominal || "-") + '</div>' +
-                    '<div class="modal-label">实测值</div><div class="modal-value">' + escapeHtml(item.value || "-") + ' ' + escapeHtml(item.unit || "") + '</div>' +
-                    '<div class="modal-label">下限</div><div class="modal-value">' + escapeHtml(item.low_limit || "-") + '</div>' +
-                    '<div class="modal-label">上限</div><div class="modal-value">' + escapeHtml(item.high_limit || "-") + '</div>' +
-                    '<div class="modal-label">判定规则</div><div class="modal-value">' + escapeHtml(item.rule || "-") + '</div>' +
-                    '<div class="modal-label">数据类型</div><div class="modal-value">' + escapeHtml(item.datatype || "-") + '</div>' +
-                    '<div class="modal-label">测试时间</div><div class="modal-value">' + escapeHtml(item.timestamp || "-") + '</div>' +
-                    '<div class="modal-label">原始名称</div><div class="modal-value">' + escapeHtml(item.raw_name || "-") + '</div>' +
-                    '<div class="modal-label">分析提示</div><div class="modal-value hint">' + escapeHtml(item.engineering_hint || "-") + '</div>' +
-                '</div>' +
-            '</div>';
-        });
+        key = String(recordOrKey || "");
     }
 
-    const html = '<div class="modal-grid">' +
-        '<div class="modal-label">SN</div><div class="modal-value">' + escapeHtml(record.sn || "-") + '</div>' +
-        '<div class="modal-label">Model</div><div class="modal-value">' + escapeHtml(record.model || "-") + '</div>' +
-        '<div class="modal-label">Result</div><div class="modal-value">' + getResultPill(record.result) + '</div>' +
-        '<div class="modal-label">Tester</div><div class="modal-value">' + escapeHtml(record.tester || "-") + '</div>' +
-        '<div class="modal-label">Source</div><div class="modal-value">' + escapeHtml(record.source || "-") + '</div>' +
-        '<div class="modal-label">Run Mode</div><div class="modal-value">' + escapeHtml(record.runmode || "-") + '</div>' +
-        '<div class="modal-label">File</div><div class="modal-value">' + escapeHtml(record.file_name || "-") + '</div>' +
-        '<div class="modal-label">测试时间</div><div class="modal-value">' + escapeHtml(record.test_time || "-") + '</div>' +
-        '<div class="modal-label">测试耗时</div><div class="modal-value">' + escapeHtml(record.total_test_time || "-") + ' s</div>' +
-        '<div class="modal-label">测试项数量</div><div class="modal-value">' + escapeHtml(record.test_count ?? testItems.length) + '</div>' +
-        '<div class="modal-label">PASS 数量</div><div class="modal-value">' + escapeHtml(record.pass_count ?? countItemsByStatus(testItems, "PASS")) + '</div>' +
-        '<div class="modal-label">FAIL 数量</div><div class="modal-value">' + escapeHtml(record.fail_count ?? countItemsByStatus(testItems, "FAIL")) + '</div>' +
-        '<div class="modal-label">Path</div><div class="modal-value">' + escapeHtml(record.file_path || "-") + '</div>' +
-        '<div class="modal-label">Fail Items</div><div class="modal-value">' + escapeHtml(failItemsText || "无") + '</div>' +
-    '</div>' +
+    if (!record && typeof index === "number" && __RECENT_RECORD_CACHE__[index]) {
+        record = __RECENT_RECORD_CACHE__[index];
+        key = getRecordKey(record);
+    }
 
-    '<div class="section-title">测试项工程报告 <span style="font-size:12px;color:#8792a0;font-weight:400;">' +
-    (abnormalItems.length > 0 ? "当前仅显示 FAIL / ERROR 项" : "当前记录无 FAIL / ERROR，显示前 80 条测试明细") +
-    '</span></div>' + itemsHtml;
+    if (record) {
+        showRecordDetailModal(record);
+        return;
+    }
 
-    document.getElementById("modalContent").innerHTML = html;
-    document.getElementById("modalMask").style.display = "flex";
-}
+    if (!key && typeof index === "number" && index >= 0) {
+        try {
+            const resp = await fetch("/api/record_detail?index=" + encodeURIComponent(index));
+            const data = await resp.json();
 
-function countItemsByStatus(items, targetStatus) {
-    let count = 0;
-
-    items.forEach(function(item) {
-        if (normalizeStatus(item.status) === targetStatus) {
-            count++;
-        }
-    });
-
-    return count;
-}
-
-function closeModal() {
-    document.getElementById("modalMask").style.display = "none";
-}
-
-function loadAnalysis() {
-    fetch("/api/analysis")
-        .then(function(response) {
-            return response.json();
-        })
-        .then(function(data) {
-            document.getElementById("metricTotal").innerText = data.total ?? 0;
-            document.getElementById("metricPass").innerText = data.pass ?? 0;
-            document.getElementById("metricFail").innerText = data.fail ?? 0;
-            document.getElementById("metricFailRate").innerText = (data.fail_rate ?? 0) + "%";
-
-            renderModelSummary(data.model_summary || []);
-            renderWarningTable(data.warnings || []);
-            drawTrend(data.trend || []);
-        })
-        .catch(function(error) {
-            alert("XML 分析数据加载失败：" + error);
-        });
-}
-
-function loadAnalysisStatusSummary() {
-    fetch("/api/recent?limit=200")
-        .then(function(response) {
-            return response.json();
-        })
-        .then(function(records) {
-            let errorCount = 0;
-            let abortPauseCount = 0;
-
-            if (!records || records.length === 0) {
-                document.getElementById("metricError").innerText = "0";
-                document.getElementById("metricAbortPause").innerText = "0";
+            if (data && data.ok && data.record) {
+                showRecordDetailModal(data.record);
                 return;
             }
+        } catch (err) {
+            alert("记录详情加载失败：" + err.message);
+            return;
+        }
+    }
 
-            records.forEach(function(record) {
-                const status = normalizeStatus(record.result);
-
-                if (status === "ERROR") {
-                    errorCount++;
-                }
-
-                if (status === "ABORT" || status === "PAUSE") {
-                    abortPauseCount++;
-                }
-            });
-
-            document.getElementById("metricError").innerText = errorCount;
-            document.getElementById("metricAbortPause").innerText = abortPauseCount;
-        })
-        .catch(function() {
-            document.getElementById("metricError").innerText = "0";
-            document.getElementById("metricAbortPause").innerText = "0";
-        });
-}
-
-function renderModelSummary(rows) {
-    const table = document.getElementById("modelSummaryTable");
-    let html = "";
-
-    if (!rows || rows.length === 0) {
-        table.innerHTML = '<tr><td colspan="6"><div class="empty">暂无型号统计数据。</div></td></tr>';
+    if (!key) {
+        alert("未找到记录：前端没有拿到记录标识");
         return;
     }
 
-    rows.forEach(function(row) {
-        html += '<tr>' +
-            '<td>' + escapeHtml(row.model) + '</td>' +
-            '<td>' + escapeHtml(row.total) + '</td>' +
-            '<td style="color:#63d58f;font-weight:700;">' + escapeHtml(row.pass) + '</td>' +
-            '<td style="color:#ff6b6b;font-weight:700;">' + escapeHtml(row.fail) + '</td>' +
-            '<td style="color:#f1c45b;font-weight:700;">' + escapeHtml(row.unknown) + '</td>' +
-            '<td>' + escapeHtml(row.fail_rate) + '%</td>' +
-        '</tr>';
-    });
+    try {
+        const url = "/api/record_detail?file_path=" + encodeURIComponent(key);
+        const resp = await fetch(url);
+        const data = await resp.json();
 
-    table.innerHTML = html;
-}
-
-function renderWarningTable(rows) {
-    const table = document.getElementById("warningTable");
-    let html = "";
-
-    if (!rows || rows.length === 0) {
-        table.innerHTML = '<tr><td colspan="4"><div class="empty">暂无预警。当前未发现明显重复 Fail 项。</div></td></tr>';
-        return;
-    }
-
-    rows.forEach(function(row) {
-        const level = String(row.level || "").toUpperCase();
-        let badgeClass = "badge-low";
-        let levelText = "低";
-
-        if (level === "HIGH") {
-            badgeClass = "badge-high";
-            levelText = "高";
-        } else if (level === "MEDIUM") {
-            badgeClass = "badge-medium";
-            levelText = "中";
+        if (data && data.ok && data.record) {
+            showRecordDetailModal(data.record);
+            return;
         }
 
-        html += '<tr>' +
-            '<td><span class="badge ' + badgeClass + '">' + levelText + '</span></td>' +
-            '<td title="' + escapeHtml(row.item) + '">' + escapeHtml(row.item) + '</td>' +
-            '<td>' + escapeHtml(row.count) + '</td>' +
-            '<td>' + translateWarning(row.message) + '</td>' +
-        '</tr>';
-    });
-
-    table.innerHTML = html;
-}
-
-function translateWarning(message) {
-    const value = String(message || "");
-
-    if (value.includes("High repeated failure")) {
-        return "检测到高频重复失败项，建议优先复核夹具、探针、仪表链路或测试项阈值。";
-    }
-
-    if (value.includes("Repeated failure")) {
-        return "检测到重复失败项，建议结合最近记录确认是否存在集中趋势。";
-    }
-
-    if (value.includes("Potential repeated")) {
-        return "存在潜在重复失败趋势，建议持续观察。";
-    }
-
-    return escapeHtml(value || "需要工程师确认。");
-}
-
-function loadStationRisk() {
-    fetch("/api/station_risk?window_minutes=30&min_fail_count=3&min_sn_count=3")
-        .then(function(response) {
-            return response.json();
-        })
-        .then(function(rows) {
-            const table = document.getElementById("stationRiskTable");
-            let html = "";
-
-            if (!rows || rows.length === 0) {
-                table.innerHTML = '<tr><td colspan="7"><div class="empty">暂无同时间窗口高频同类 Fail 风险提示。</div></td></tr>';
-                return;
-            }
-
-            rows.forEach(function(row) {
-                html += '<tr>' +
-                    '<td><span class="badge badge-low">' + escapeHtml(row.level || "提示") + '</span></td>' +
-                    '<td>' + escapeHtml(row.start_time) + ' ~ ' + escapeHtml(row.end_time) + '</td>' +
-                    '<td title="' + escapeHtml(row.test_item) + '">' + escapeHtml(shortText(row.test_item, 36)) + '</td>' +
-                    '<td title="' + escapeHtml(row.signal) + '">' + escapeHtml(shortText(row.signal, 24)) + '</td>' +
-                    '<td>' + escapeHtml(row.instrument) + '</td>' +
-                    '<td>' + escapeHtml(row.fail_count) + ' / ' + escapeHtml(row.sn_count) + ' SN</td>' +
-                    '<td title="' + escapeHtml(row.message) + '">' + escapeHtml(shortText(row.message, 72)) + '</td>' +
-                '</tr>';
-            });
-
-            table.innerHTML = html;
-        })
-        .catch(function(error) {
-            document.getElementById("stationRiskTable").innerHTML =
-                '<tr><td colspan="7"><div class="empty">风险提示加载失败：' + escapeHtml(error) + '</div></td></tr>';
-        });
-}
-
-function drawTrend(rows) {
-    const canvas = document.getElementById("trendCanvas");
-    const rect = canvas.getBoundingClientRect();
-    const ratio = window.devicePixelRatio || 1;
-
-    canvas.width = rect.width * ratio;
-    canvas.height = rect.height * ratio;
-
-    const ctx = canvas.getContext("2d");
-    ctx.scale(ratio, ratio);
-
-    const width = rect.width;
-    const height = rect.height;
-
-    ctx.clearRect(0, 0, width, height);
-    ctx.font = "12px Microsoft YaHei, Arial";
-
-    const left = 48;
-    const right = width - 24;
-    const top = 24;
-    const bottom = height - 40;
-    const chartWidth = right - left;
-    const chartHeight = bottom - top;
-
-    ctx.strokeStyle = "#2b3440";
-    ctx.lineWidth = 1;
-
-    for (let i = 0; i < 5; i++) {
-        const y = top + i * (chartHeight / 4);
-        ctx.beginPath();
-        ctx.moveTo(left, y);
-        ctx.lineTo(right, y);
-        ctx.stroke();
-    }
-
-    if (!rows || rows.length === 0) {
-        ctx.fillStyle = "#7f8a99";
-        ctx.fillText("暂无趋势数据", left, top + 20);
-        return;
-    }
-
-    const maxFail = Math.max.apply(null, rows.map(function(row) {
-        return Number(row.fail || 0);
-    }).concat([1]));
-
-    const barSpace = chartWidth / rows.length;
-    const barWidth = Math.max(14, barSpace * 0.48);
-
-    rows.forEach(function(row, index) {
-        const failCount = Number(row.fail || 0);
-        const barHeight = failCount / maxFail * chartHeight;
-        const x = left + index * barSpace + (barSpace - barWidth) / 2;
-        const y = bottom - barHeight;
-
-        ctx.fillStyle = "#ff6b6b";
-        ctx.fillRect(x, y, barWidth, barHeight);
-
-        ctx.fillStyle = "#cfd7e3";
-        ctx.textAlign = "center";
-        ctx.fillText(String(failCount), x + barWidth / 2, y - 6);
-
-        ctx.fillStyle = "#7f8a99";
-        ctx.save();
-        ctx.translate(x + barWidth / 2, bottom + 15);
-        ctx.rotate(-0.35);
-        ctx.fillText(String(row.date || "").slice(5), 0, 0);
-        ctx.restore();
-    });
-
-    ctx.textAlign = "left";
-    ctx.fillStyle = "#7f8a99";
-    ctx.fillText("Fail 数量", 8, top + 4);
-}
-
-function loadMachineStatus() {
-    fetch("/api/machine/status")
-        .then(function(response) {
-            return response.json();
-        })
-        .then(function(rows) {
-            const table = document.getElementById("machineTable");
-            let html = "";
-
-            if (!rows || rows.length === 0) {
-                table.innerHTML = '<tr><td colspan="7"><div class="empty">暂无机台状态数据。可运行 tools/mock_machine_agent.py 进行模拟上报。</div></td></tr>';
-                return;
-            }
-
-            rows.forEach(function(row) {
-                const onlineText = row.online ? "ONLINE" : "OFFLINE";
-                const onlineClass = row.online ? "status-online" : "status-offline";
-                let statusClass = "status-normal";
-                const statusText = String(row.status || "").toUpperCase();
-
-                if (statusText.includes("WARNING")) {
-                    statusClass = "status-warning";
-                }
-
-                if (statusText.includes("ERROR") || statusText.includes("OFFLINE") || statusText.includes("FAIL")) {
-                    statusClass = "status-offline";
-                }
-
-                html += '<tr>' +
-                    '<td>' + escapeHtml(row.machine_id) + '</td>' +
-                    '<td class="' + onlineClass + '">' + onlineText + '</td>' +
-                    '<td>' + escapeHtml(row.voltage) + ' V</td>' +
-                    '<td>' + escapeHtml(row.current) + ' A</td>' +
-                    '<td>' + escapeHtml(row.temperature) + ' ℃</td>' +
-                    '<td class="' + statusClass + '">' + escapeHtml(row.status) + '</td>' +
-                    '<td>' + escapeHtml(row.last_update) + '</td>' +
-                '</tr>';
-            });
-
-            table.innerHTML = html;
-        })
-        .catch(function(error) {
-            document.getElementById("machineTable").innerHTML =
-                '<tr><td colspan="7"><div class="empty">机台状态加载失败：' + escapeHtml(error) + '</div></td></tr>';
-        });
-}
-
-function autoRefresh() {
-    loadRecent();
-    loadTopFail();
-
-    if (document.getElementById("analysis").classList.contains("active")) {
-        loadAnalysis();
-        loadStationRisk();
-        loadAnalysisStatusSummary();
-    }
-
-    if (document.getElementById("machine").classList.contains("active")) {
-        loadMachineStatus();
+        alert((data && data.message) ? data.message : "未找到记录");
+    } catch (err) {
+        alert("记录详情加载失败：" + err.message);
     }
 }
 
-loadRecent();
-loadTopFail();
-loadTopError();
-loadMachineStatus();
+function showRecordDetailModal(record) {
+    let old = document.getElementById("recordDetailModal");
 
-setInterval(autoRefresh, 5000);
-setInterval(loadMachineStatus, 3000);
+    if (old) {
+        old.remove();
+    }
+
+    const failItems = record.fail_items || [];
+    const rawItems = record.raw_items || [];
+
+    let failHtml = "";
+
+    if (failItems.length === 0) {
+        failHtml = `<div class="muted">无 FAIL 项</div>`;
+    } else {
+        failHtml = failItems.map((item, idx) => {
+            return `
+                <div class="detail-item">
+                    <div class="detail-item-title">${idx + 1}. ${escapeHtml(item.name || item.raw_name || "-")}</div>
+                    <div class="detail-grid">
+                        <div><b>章节</b><span>${escapeHtml(item.section || "-")}</span></div>
+                        <div><b>点位/信号</b><span>${escapeHtml(item.signal || "-")}</span></div>
+                        <div><b>参考点</b><span>${escapeHtml(item.reference || "-")}</span></div>
+                        <div><b>仪表</b><span>${escapeHtml(item.instrument || "-")}</span></div>
+                        <div><b>仪表设备</b><span>${escapeHtml(item.instrument_device || "-")}</span></div>
+                        <div><b>标称范围</b><span>${escapeHtml(item.nominal_range || "-")}</span></div>
+                        <div><b>实测值</b><span>${escapeHtml(item.value || "-")} ${escapeHtml(item.unit || "")}</span></div>
+                        <div><b>下限</b><span>${escapeHtml(item.lolim || "-")}</span></div>
+                        <div><b>上限</b><span>${escapeHtml(item.hilim || "-")}</span></div>
+                        <div><b>规则</b><span>${escapeHtml(item.rule || "-")}</span></div>
+                        <div><b>数据类型</b><span>${escapeHtml(item.datatype || "-")}</span></div>
+                        <div><b>时间</b><span>${escapeHtml(item.timestamp || "-")}</span></div>
+                    </div>
+                    <div class="hint-box">${escapeHtml(item.engineering_hint || "仅为工程风险提示，不作为故障结论。")}</div>
+                </div>
+            `;
+        }).join("");
+    }
+
+    let modal = document.createElement("div");
+    modal.id = "recordDetailModal";
+    modal.className = "modal-mask";
+    modal.innerHTML = `
+        <div class="modal-window">
+            <div class="modal-header">
+                <div>
+                    <div class="modal-title">工程测试报告</div>
+                    <div class="modal-subtitle">${escapeHtml(record.source_file || "-")}</div>
+                </div>
+                <button class="modal-close" onclick="closeRecordDetailModal()">×</button>
+            </div>
+
+            <div class="modal-body">
+                <div class="detail-section-title">基础信息</div>
+                <div class="detail-grid">
+                    <div><b>SN</b><span>${escapeHtml(record.sn || "-")}</span></div>
+                    <div><b>Model</b><span>${escapeHtml(record.model || "-")}</span></div>
+                    <div><b>Result</b><span class="${getResultClass(record.business_result || record.result)}">${escapeHtml(normalizeResult(record.business_result || record.result))}</span></div>
+                    <div><b>Source</b><span>${escapeHtml(record.test_mode || "-")}</span></div>
+                    <div><b>Station</b><span>${escapeHtml(record.station || "-")}</span></div>
+                    <div><b>Tester</b><span>${escapeHtml(record.tester || "-")}</span></div>
+                    <div><b>测试时间</b><span>${escapeHtml(record.time || "-")}</span></div>
+                    <div><b>XML 文件</b><span>${escapeHtml(record.source_file || "-")}</span></div>
+                    <div><b>总测试项</b><span>${escapeHtml(record.total_tests ?? "-")}</span></div>
+                    <div><b>PASS 数量</b><span>${escapeHtml(record.passed_tests ?? "-")}</span></div>
+                    <div><b>FAIL 数量</b><span>${escapeHtml(record.failed_tests ?? "-")}</span></div>
+                    <div><b>中断数量</b><span>${escapeHtml(record.interrupted_tests ?? "-")}</span></div>
+                </div>
+
+                <div class="detail-section-title">路径</div>
+                <div class="path-box">${escapeHtml(record.relative_path || record.source_path || "-")}</div>
+
+                <div class="detail-section-title">FAIL 项工程分析</div>
+                ${failHtml}
+
+                <div class="detail-section-title">原始测试项</div>
+                <div class="raw-scroll">
+                    ${rawItems.slice(0, 300).map((item, idx) => {
+                        return `
+                            <div class="raw-row">
+                                <span>${idx + 1}</span>
+                                <span>${escapeHtml(item.business_status || item.status || "-")}</span>
+                                <span>${escapeHtml(item.name || item.raw_name || "-")}</span>
+                                <span>${escapeHtml(item.value || "-")} ${escapeHtml(item.unit || "")}</span>
+                            </div>
+                        `;
+                    }).join("")}
+                </div>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+}
+
+function closeRecordDetailModal() {
+    let modal = document.getElementById("recordDetailModal");
+
+    if (modal) {
+        modal.remove();
+    }
+}
+
+async function loadAnalysis() {
+    try {
+        const resp = await fetch("/api/analysis");
+        const data = await resp.json();
+
+        const modelSummary = data.model_summary || {};
+        const modelBody = document.getElementById("modelSummaryBody");
+
+        const modelKeys = Object.keys(modelSummary);
+
+        if (modelKeys.length === 0) {
+            modelBody.innerHTML = `<tr><td colspan="5">暂无型号统计</td></tr>`;
+        } else {
+            modelBody.innerHTML = modelKeys.map(model => {
+                const item = modelSummary[model];
+
+                return `
+                    <tr>
+                        <td>${escapeHtml(model)}</td>
+                        <td>${escapeHtml(item.total || 0)}</td>
+                        <td class="status-pass">${escapeHtml(item.PASS || 0)}</td>
+                        <td class="status-fail">${escapeHtml(item.FAIL || 0)}</td>
+                        <td class="status-interrupt">${escapeHtml(item["中断"] || 0)}</td>
+                    </tr>
+                `;
+            }).join("");
+        }
+
+        const risks = data.station_risk || [];
+        const riskBody = document.getElementById("riskBody");
+
+        if (!Array.isArray(risks) || risks.length === 0) {
+            riskBody.innerHTML = `<tr><td colspan="5">暂无高复发风险提示</td></tr>`;
+        } else {
+            riskBody.innerHTML = risks.map(risk => {
+                const level = risk.level || "LOW";
+                const cls = level === "HIGH" ? "level-high" : level === "MEDIUM" ? "level-medium" : "level-low";
+
+                return `
+                    <tr>
+                        <td>${escapeHtml(risk.time_window || "-")}</td>
+                        <td class="truncate">${escapeHtml(risk.item || "-")}</td>
+                        <td>${escapeHtml(risk.fail_count || 0)}</td>
+                        <td>${escapeHtml(risk.sn_count || 0)}</td>
+                        <td class="${cls}">${escapeHtml(level)}</td>
+                    </tr>
+                `;
+            }).join("");
+        }
+    } catch (err) {
+        console.error(err);
+    }
+}
+
+async function loadMachines() {
+    try {
+        const resp = await fetch("/api/telemetry/latest");
+        const data = await resp.json();
+
+        document.getElementById("machineTotal").textContent = data.total ?? 0;
+        document.getElementById("machineOnline").textContent = data.online ?? 0;
+        document.getElementById("machineStale").textContent = data.stale ?? 0;
+        document.getElementById("machineOffline").textContent = data.offline ?? 0;
+
+        const grid = document.getElementById("machineGrid");
+        const machines = data.machines || [];
+
+        if (!Array.isArray(machines) || machines.length === 0) {
+            grid.innerHTML = `<div class="muted">暂无机台 telemetry 数据，请启动 mock_machine_agent.py</div>`;
+            return;
+        }
+
+        grid.innerHTML = machines.map(machine => {
+            const m = machine.measurements || {};
+            return `
+                <div class="machine-card">
+                    <div class="machine-title">${escapeHtml(machine.machine_id || "-")}</div>
+                    <div class="machine-line"><span>在线状态</span><b>${escapeHtml(machine.online_status || "-")}</b></div>
+                    <div class="machine-line"><span>运行状态</span><b>${escapeHtml(machine.display_state || "-")}</b></div>
+                    <div class="machine-line"><span>Model</span><b>${escapeHtml(machine.model || "-")}</b></div>
+                    <div class="machine-line"><span>模式</span><b>${escapeHtml(machine.test_mode || "-")}</b></div>
+                    <div class="machine-line"><span>当前 SN</span><b>${escapeHtml(machine.current_sn || "-")}</b></div>
+                    <div class="machine-line"><span>当前步骤</span><b>${escapeHtml(machine.current_step || "-")}</b></div>
+                    <div class="machine-line"><span>VIN</span><b>${escapeHtml(m.vin_voltage ?? "-")}</b></div>
+                    <div class="machine-line"><span>IIN</span><b>${escapeHtml(m.vin_current ?? "-")}</b></div>
+                    <div class="machine-line"><span>报警数</span><b>${escapeHtml(machine.alarm_count ?? 0)}</b></div>
+                </div>
+            `;
+        }).join("");
+    } catch (err) {
+        console.error(err);
+    }
+}
+
+async function refreshAll() {
+    await loadHealth();
+    await loadStats();
+    await loadTopFail();
+    await loadRecentRecords();
+}
+
+refreshAll();
+setInterval(refreshAll, 3000);
+setInterval(loadMachines, 3000);
 </script>
 </body>
 </html>
+    <title>FCT 测试日志分析平台</title>
+    <style>
+        :root {
+            --bg: #080d13;
+            --panel: #111821;
+            --panel2: #151f2b;
+            --line: #263445;
+            --line2: #223044;
+            --text: #d7e3f4;
+            --muted: #8fa3bd;
+            --white: #ffffff;
+            --green: #2ee59d;
+            --red: #ff5c73;
+            --blue: #58a6ff;
+            --yellow: #ffcc66;
+            --orange: #ff9f43;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            background: var(--bg);
+            color: var(--text);
+            font-family: "Microsoft YaHei", "Segoe UI", Arial, sans-serif;
+            font-size: 14px;
+        }
+
+        .app {
+            min-height: 100vh;
+            display: grid;
+            grid-template-columns: 250px 1fr;
+        }
+
+        .sidebar {
+            background: #070b10;
+            border-right: 1px solid #1c2a3a;
+            padding: 20px 16px;
+        }
+
+        .brand {
+            font-size: 18px;
+            font-weight: 800;
+            color: var(--white);
+            margin-bottom: 6px;
+        }
+
+        .brand-sub {
+            color: var(--muted);
+            font-size: 12px;
+            line-height: 1.5;
+            margin-bottom: 24px;
+        }
+
+        .nav-item {
+            padding: 11px 12px;
+            border: 1px solid transparent;
+            border-radius: 8px;
+            color: #9eb2ca;
+            cursor: pointer;
+            margin-bottom: 8px;
+        }
+
+        .nav-item.active {
+            background: #101926;
+            border-color: #2c3d52;
+            color: var(--white);
+        }
+
+        .nav-item:hover {
+            background: #0d1520;
+        }
+
+        .main {
+            padding: 22px 28px;
+            overflow: hidden;
+        }
+
+        .topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 18px;
+        }
+
+        .title {
+            font-size: 23px;
+            font-weight: 800;
+            color: var(--white);
+        }
+
+        .subtitle {
+            margin-top: 5px;
+            color: var(--muted);
+            font-size: 13px;
+        }
+
+        .server-info {
+            color: var(--muted);
+            font-size: 12px;
+            text-align: right;
+            line-height: 1.6;
+        }
+
+        .panel {
+            display: none;
+        }
+
+        .panel.active {
+            display: block;
+        }
+
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 14px;
+            margin-bottom: 18px;
+        }
+
+        .card {
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            padding: 16px;
+        }
+
+        .card-name {
+            color: var(--muted);
+            font-size: 12px;
+            margin-bottom: 10px;
+        }
+
+        .card-value {
+            color: var(--white);
+            font-size: 26px;
+            font-weight: 800;
+        }
+
+        .card-desc {
+            margin-top: 8px;
+            color: #768ba5;
+            font-size: 12px;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 18px;
+            margin-bottom: 18px;
+        }
+
+        .box {
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            padding: 16px;
+            overflow: hidden;
+        }
+
+        .box-title {
+            color: var(--white);
+            font-weight: 800;
+            font-size: 17px;
+            margin-bottom: 14px;
+        }
+
+        .box-sub {
+            color: var(--muted);
+            font-size: 12px;
+            margin-bottom: 10px;
+        }
+
+        .search-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        input {
+            background: #0d141d;
+            border: 1px solid #2b3a4b;
+            color: var(--text);
+            border-radius: 6px;
+            padding: 10px 12px;
+            outline: none;
+            flex: 1;
+        }
+
+        button {
+            background: #1b2635;
+            border: 1px solid #3b4d63;
+            color: var(--text);
+            padding: 9px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #26374d;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            color: #aec2dc;
+            font-size: 13px;
+            text-align: left;
+            padding: 10px 12px;
+            background: #121b27;
+            border-bottom: 1px solid #2a3a4d;
+            position: sticky;
+            top: 0;
+            z-index: 2;
+        }
+
+        td {
+            padding: 10px 12px;
+            color: #b9c8dc;
+            border-bottom: 1px solid #1d2a3b;
+            font-size: 13px;
+            vertical-align: middle;
+        }
+
+        tr:hover td {
+            background: #101926;
+        }
+
+        .table-scroll {
+            max-height: 360px;
+            overflow-y: auto;
+            border: 1px solid #223044;
+            border-radius: 8px;
+        }
+
+        .recent-row {
+            cursor: pointer;
+        }
+
+        .truncate {
+            max-width: 260px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .pill {
+            display: inline-block;
+            min-width: 62px;
+            text-align: center;
+            padding: 3px 8px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 800;
+        }
+
+        .pill-pass {
+            color: #06140f;
+            background: var(--green);
+        }
+
+        .pill-fail {
+            color: #19050a;
+            background: var(--red);
+        }
+
+        .pill-interrupt {
+            color: #06111f;
+            background: var(--blue);
+        }
+
+        .level-high {
+            color: var(--red);
+            font-weight: 800;
+        }
+
+        .level-medium {
+            color: var(--yellow);
+            font-weight: 800;
+        }
+
+        .level-low {
+            color: #8fa3bd;
+            font-weight: 800;
+        }
+
+        .machine-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 14px;
+        }
+
+        .machine-card {
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            padding: 14px;
+            cursor: pointer;
+        }
+
+        .machine-card:hover {
+            border-color: #4f8cff;
+        }
+
+        .machine-title {
+            color: var(--white);
+            font-size: 15px;
+            font-weight: 800;
+            margin-bottom: 10px;
+        }
+
+        .machine-line {
+            display: flex;
+            justify-content: space-between;
+            color: #aabbd0;
+            font-size: 12px;
+            padding: 4px 0;
+            border-bottom: 1px solid #182435;
+        }
+
+        .machine-line:last-child {
+            border-bottom: none;
+        }
+
+        .status-pass {
+            color: var(--green) !important;
+            font-weight: 800;
+        }
+
+        .status-fail {
+            color: var(--red) !important;
+            font-weight: 800;
+        }
+
+        .status-interrupt {
+            color: var(--blue) !important;
+            font-weight: 800;
+        }
+
+        .muted {
+            color: var(--muted);
+            font-size: 13px;
+        }
+
+        .path-box {
+            background: #0d141d;
+            border: 1px solid #223044;
+            border-radius: 6px;
+            padding: 10px;
+            color: #aebed2;
+            font-family: Consolas, monospace;
+            font-size: 12px;
+            word-break: break-all;
+        }
+
+        .modal-mask {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.68);
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-window {
+            width: min(1180px, 92vw);
+            max-height: 86vh;
+            background: #111821;
+            border: 1px solid #2b3a4b;
+            border-radius: 10px;
+            box-shadow: 0 18px 60px rgba(0, 0, 0, 0.55);
+            color: #d7e3f4;
+            overflow: hidden;
+        }
+
+        .modal-header {
+            height: 62px;
+            padding: 0 20px;
+            border-bottom: 1px solid #263445;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #151f2b;
+        }
+
+        .modal-title {
+            font-size: 18px;
+            font-weight: 800;
+            color: #ffffff;
+        }
+
+        .modal-subtitle {
+            margin-top: 4px;
+            font-size: 12px;
+            color: #8fa3bd;
+        }
+
+        .modal-close {
+    width: 36px;
+    height: 36px;
+    border: 1px solid #3b4d63;
+    border-radius: 6px;
+    background: #1b2635;
+    color: #d7e3f4;
+    cursor: pointer;
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    font-size: 24px;
+    font-weight: 700;
+    line-height: 0;
+    padding: 0;
+    margin: 0;
+    font-family: Arial, "Microsoft YaHei", sans-serif;
+}
+
+.modal-close:hover {
+    background: #26374d;
+    border-color: #58708f;
+}
+
+        .modal-body {
+            padding: 18px 20px 24px;
+            overflow-y: auto;
+            max-height: calc(86vh - 62px);
+        }
+
+        .detail-section-title {
+            margin: 16px 0 10px;
+            font-size: 15px;
+            font-weight: 800;
+            color: #ffffff;
+            border-left: 3px solid #4f8cff;
+            padding-left: 8px;
+        }
+
+        .detail-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 10px;
+        }
+
+        .detail-grid > div {
+            background: #0d141d;
+            border: 1px solid #223044;
+            border-radius: 6px;
+            padding: 9px 10px;
+            min-height: 46px;
+        }
+
+        .detail-grid b {
+            display: block;
+            font-size: 11px;
+            color: #7890ad;
+            margin-bottom: 5px;
+        }
+
+        .detail-grid span {
+            font-size: 13px;
+            color: #dce8f8;
+            word-break: break-all;
+        }
+
+        .detail-item {
+            background: #0d141d;
+            border: 1px solid #26384e;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 12px;
+        }
+
+        .detail-item-title {
+            font-size: 14px;
+            font-weight: 800;
+            color: #ffb4b4;
+            margin-bottom: 10px;
+        }
+
+        .hint-box {
+            margin-top: 10px;
+            background: #1a2330;
+            border-left: 3px solid #ffcc66;
+            padding: 9px 10px;
+            color: #d9c58a;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        .raw-scroll {
+            max-height: 280px;
+            overflow-y: auto;
+            border: 1px solid #223044;
+            border-radius: 6px;
+            background: #0d141d;
+        }
+
+        .raw-row {
+            display: grid;
+            grid-template-columns: 60px 90px 1fr 160px;
+            gap: 10px;
+            padding: 8px 10px;
+            border-bottom: 1px solid #1d2a3b;
+            font-size: 12px;
+            color: #aebed2;
+        }
+
+        .raw-row:last-child {
+            border-bottom: none;
+        }
+    </style>
+</head>
+<body>
+<div class="app">
+    <aside class="sidebar">
+        <div class="brand">FCT 测试日志分析平台</div>
+        <div class="brand-sub">
+            G4.9 PCBA XML Dashboard<br>
+            PASS / FAIL / 中断
+        </div>
+
+        <div class="nav-item active" onclick="switchPanel('overviewPanel', this)">综合看板</div>
+        <div class="nav-item" onclick="switchPanel('analysisPanel', this)">XML 分析预警</div>
+        <div class="nav-item" onclick="switchPanel('machinePanel', this)">机台实时监控</div>
+    </aside>
+
+    <main class="main">
+        <div class="topbar">
+            <div>
+                <div class="title">G4.9 FCT XML Dashboard</div>
+                <div class="subtitle">递归扫描 Online / Offline 测试日志，统一三态：PASS / FAIL / 中断</div>
+            </div>
+            <div class="server-info" id="serverInfo">加载中...</div>
+        </div>
+
+        <section id="overviewPanel" class="panel active">
+            <div class="cards">
+                <div class="card">
+                    <div class="card-name">总记录数</div>
+                    <div class="card-value" id="statTotal">0</div>
+                    <div class="card-desc">XML records</div>
+                </div>
+                <div class="card">
+                    <div class="card-name">PASS</div>
+                    <div class="card-value status-pass" id="statPass">0</div>
+                    <div class="card-desc">完整执行且通过</div>
+                </div>
+                <div class="card">
+                    <div class="card-name">FAIL</div>
+                    <div class="card-value status-fail" id="statFail">0</div>
+                    <div class="card-desc">完整执行且失败</div>
+                </div>
+                <div class="card">
+                    <div class="card-name">中断</div>
+                    <div class="card-value status-interrupt" id="statInterrupt">0</div>
+                    <div class="card-desc">未完整跑完统一归类</div>
+                </div>
+            </div>
+
+            <div class="grid-2">
+                <div class="box">
+                    <div class="box-title">SN 查询</div>
+                    <div class="box-sub">支持完整 SN、后缀、文件名包含匹配</div>
+                    <div class="search-row">
+                        <input id="snInput" placeholder="输入 SN / SN 后缀 / 文件名关键字">
+                        <button onclick="searchSN()">查询</button>
+                    </div>
+                    <div id="searchResult" class="muted">等待查询...</div>
+                </div>
+
+                <div class="box">
+                    <div class="box-title">Top Fail 高频失败项</div>
+                    <div class="box-sub">仅统计 FAIL，不统计中断</div>
+                    <div class="table-scroll">
+                        <table>
+                            <thead>
+                            <tr>
+                                <th>失败项</th>
+                                <th style="width: 90px;">次数</th>
+                                <th style="width: 100px;">等级</th>
+                            </tr>
+                            </thead>
+                            <tbody id="topFailBody">
+                            <tr><td colspan="3">加载中...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="box">
+                <div class="box-title">最近测试记录</div>
+                <div class="box-sub">固定高度滚动，点击记录查看工程报告</div>
+                <div class="table-scroll">
+                    <table>
+                        <thead>
+                        <tr>
+                            <th style="width: 55px;">#</th>
+                            <th style="width: 80px;">模式</th>
+                            <th style="width: 105px;">Model</th>
+                            <th>SN</th>
+                            <th style="width: 90px;">状态</th>
+                            <th>问题项</th>
+                            <th style="width: 155px;">测试时间</th>
+                            <th>XML 文件</th>
+                            <th>相对路径</th>
+                        </tr>
+                        </thead>
+                        <tbody id="recentBody">
+                        <tr><td colspan="9">加载中...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="box-sub" style="margin-top: 12px;">状态规则：只有 PASS / FAIL / 中断。凡是未跑完整套测试的记录，统一显示为“中断”。</div>
+            </div>
+        </section>
+
+        <section id="analysisPanel" class="panel">
+            <div class="grid-2">
+                <div class="box">
+                    <div class="box-title">型号统计</div>
+                    <div class="table-scroll">
+                        <table>
+                            <thead>
+                            <tr>
+                                <th>Model</th>
+                                <th>总数</th>
+                                <th>PASS</th>
+                                <th>FAIL</th>
+                                <th>中断</th>
+                            </tr>
+                            </thead>
+                            <tbody id="modelSummaryBody">
+                            <tr><td colspan="5">加载中...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="box">

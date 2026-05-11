@@ -1,110 +1,144 @@
-from dataclasses import dataclass, field
-from typing import List, Dict, Any
+# -*- coding: utf-8 -*-
+"""
+G4.9 FCT XML Dashboard - Data Models
+
+业务状态统一：
+- PASS
+- FAIL
+- 中断
+
+注意：
+ERROR / PAUSED / UNKNOWN / PARSE_ERROR 等只允许作为 raw_status 或技术字段存在，
+前端和业务展示统一收敛为 “中断”。
+"""
+
+from dataclasses import dataclass, field, asdict
+from typing import Any, Dict, List, Optional
+
+
+BUSINESS_PASS = "PASS"
+BUSINESS_FAIL = "FAIL"
+BUSINESS_INTERRUPT = "中断"
+
+
+def to_dict_safe(obj: Any) -> Dict[str, Any]:
+    """把 dataclass 或普通对象安全转 dict。"""
+    if hasattr(obj, "__dataclass_fields__"):
+        return asdict(obj)
+    if isinstance(obj, dict):
+        return obj
+    return dict(obj.__dict__) if hasattr(obj, "__dict__") else {}
 
 
 @dataclass
 class TestItem:
-    raw_name: str
-    name: str
-    section: str
-    signal: str
-    reference_point: str
-    instrument: str
-    instrument_device: str
-    unit: str
-    value: str
-    low_limit: str
-    high_limit: str
-    nominal: str
-    rule: str
-    status: str
-    datatype: str
-    timestamp: str
-    test_type: str
-    engineering_hint: str
+    name: str = ""
+    status: str = ""
+    business_status: str = BUSINESS_INTERRUPT
+
+    value: str = ""
+    unit: str = ""
+    lolim: str = ""
+    hilim: str = ""
+    rule: str = ""
+    datatype: str = ""
+    timestamp: str = ""
+
+    section: str = ""
+    signal: str = ""
+    reference: str = ""
+    instrument: str = ""
+    instrument_device: str = ""
+    nominal_range: str = ""
+    raw_name: str = ""
+    group: str = ""
+
+    engineering_hint: str = ""
 
     def to_dict(self) -> Dict[str, Any]:
-        return {
-            "raw_name": self.raw_name,
-            "name": self.name,
-            "section": self.section,
-            "signal": self.signal,
-            "reference_point": self.reference_point,
-            "instrument": self.instrument,
-            "instrument_device": self.instrument_device,
-            "unit": self.unit,
-            "value": self.value,
-            "low_limit": self.low_limit,
-            "high_limit": self.high_limit,
-            "nominal": self.nominal,
-            "rule": self.rule,
-            "status": self.status,
-            "datatype": self.datatype,
-            "timestamp": self.timestamp,
-            "test_type": self.test_type,
-            "engineering_hint": self.engineering_hint,
-        }
+        return asdict(self)
 
 
 @dataclass
 class TestRecord:
-    sn: str
-    model: str
-    result: str
-    fail_items: List[str]
-    file_name: str
-    file_path: str
-    test_time: str
-    source: str
+    sn: str = ""
+    sn_aliases: List[str] = field(default_factory=list)
+
+    model: str = "UNKNOWN"
+    test_mode: str = "Unknown"
+    date_folder: str = ""
+    relative_path: str = ""
+
+    station: str = "FCT"
     tester: str = ""
-    runmode: str = ""
-    total_test_time: str = ""
-    test_items: List[TestItem] = field(default_factory=list)
+    product: str = ""
 
-    def to_dict(self, include_items: bool = True) -> Dict[str, Any]:
-        data = {
-            "sn": self.sn,
-            "model": self.model,
-            "result": self.result,
-            "fail_items": self.fail_items,
-            "file_name": self.file_name,
-            "file_path": self.file_path,
-            "test_time": self.test_time,
-            "source": self.source,
-            "tester": self.tester,
-            "runmode": self.runmode,
-            "total_test_time": self.total_test_time,
-            "test_count": len(self.test_items),
-            "fail_count": len([i for i in self.test_items if i.status == "FAILED"]),
-            "pass_count": len([i for i in self.test_items if i.status == "PASSED"]),
-        }
+    result: str = BUSINESS_INTERRUPT
+    business_result: str = BUSINESS_INTERRUPT
+    raw_result: str = ""
 
-        if include_items:
-            data["test_items"] = [item.to_dict() for item in self.test_items]
-        else:
-            data["test_items"] = []
+    panel_status: str = ""
+    panel_status_raw: str = ""
+    dut_status: str = ""
+    dut_status_raw: str = ""
 
-        return data
+    fail_items: List[Dict[str, Any]] = field(default_factory=list)
+    interrupted_items: List[Dict[str, Any]] = field(default_factory=list)
+    raw_items: List[Dict[str, Any]] = field(default_factory=list)
 
+    time: str = ""
+    batch_time: str = ""
+    panel_time: str = ""
+    dut_time: str = ""
+    test_time: str = ""
 
-# ✅ 补回 MachineStatus，用于 app.py 中的 /api/machine/status
-@dataclass
-class MachineStatus:
-    machine_id: str
-    online: bool
-    voltage: float
-    current: float
-    temperature: float
-    status: str
-    last_update: str
+    source_file: str = ""
+    source_path: str = ""
+    file_mtime: str = ""
+    file_mtime_ts: float = 0.0
+
+    total_tests: int = 0
+    failed_tests: int = 0
+    passed_tests: int = 0
+    interrupted_tests: int = 0
+    skipped_tests: int = 0
+
+    parse_error: str = ""
 
     def to_dict(self) -> Dict[str, Any]:
-        return {
-            "machine_id": self.machine_id,
-            "online": self.online,
-            "voltage": self.voltage,
-            "current": self.current,
-            "temperature": self.temperature,
-            "status": self.status,
-            "last_update": self.last_update,
-        }
+        return asdict(self)
+
+
+@dataclass
+class MachineStatus:
+    machine_id: str = ""
+    station: str = "FCT"
+    line: str = ""
+    host_name: str = ""
+    ip: str = ""
+
+    model: str = ""
+    test_mode: str = "Online"
+
+    timestamp: str = ""
+    server_receive_time: str = ""
+
+    online_status: str = "OFFLINE"
+    machine_state: str = "IDLE"
+    display_state: str = "OFFLINE"
+
+    current_sn: str = ""
+    current_step: str = ""
+
+    instruments: Dict[str, Any] = field(default_factory=dict)
+    measurements: Dict[str, Any] = field(default_factory=dict)
+    communication: Dict[str, Any] = field(default_factory=dict)
+    alarms: List[Any] = field(default_factory=list)
+
+    offline_instruments: List[str] = field(default_factory=list)
+    alarm_count: int = 0
+
+    raw_payload: Dict[str, Any] = field(default_factory=dict)
+
+    def to_dict(self) -> Dict[str, Any]:
+        return asdict(self)
