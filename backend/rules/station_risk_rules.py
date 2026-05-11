@@ -7,34 +7,21 @@ from typing import Any, Dict, List, Optional
 def parse_dt(text: str) -> Optional[datetime]:
     if not text:
         return None
-
     raw = str(text).strip()
     if not raw:
         return None
-
-    candidates = [
-        "%Y-%m-%d %H:%M:%S",
-        "%Y/%m/%d %H:%M:%S",
-    ]
-
+    candidates = ["%Y-%m-%d %H:%M:%S", "%Y/%m/%d %H:%M:%S"]
     for fmt in candidates:
-        try:
-            return datetime.strptime(raw[:19], fmt)
-        except Exception:
-            pass
-
+        try: return datetime.strptime(raw[:19], fmt)
+        except Exception: pass
     try:
         compact = "".join(ch for ch in raw if ch.isdigit())
-        if len(compact) >= 14:
-            return datetime.strptime(compact[:14], "%Y%m%d%H%M%S")
-    except Exception:
-        pass
-
+        if len(compact) >= 14: return datetime.strptime(compact[:14], "%Y%m%d%H%M%S")
+    except Exception: pass
     return None
 
 def time_bucket(dt_value: datetime, window_minutes: int) -> str:
-    if window_minutes <= 0:
-        window_minutes = 30
+    if window_minutes <= 0: window_minutes = 30
     minute = (dt_value.minute // window_minutes) * window_minutes
     bucket = dt_value.replace(minute=minute, second=0, microsecond=0)
     return bucket.strftime("%Y-%m-%d %H:%M")
@@ -55,14 +42,18 @@ def build_station_risk(
     for record in records:
         record_time = record.get("time") or record.get("file_mtime") or ""
         dt_value = parse_dt(record_time)
-        if not dt_value:
-            continue
+        if not dt_value: continue
 
         bucket = time_bucket(dt_value, window_minutes)
         fail_items = record.get("fail_items", []) or []
 
         for item in fail_items:
             item_name = item.get("name") or item.get("raw_name") or "-"
+            
+            # 🌟 核心拦截：把人为操作失误从物理链路预警中彻底剔除 🌟
+            if "Get Unit Information" in item_name:
+                continue
+
             signal = item.get("signal") or item_name
             instrument = item.get("instrument") or "UNKNOWN"
 
@@ -103,7 +94,7 @@ def build_station_risk(
                 "instrument": instrument, "fail_count": fail_count, "sn_count": sn_count,
                 "models": sorted(list(group["models"])), "modes": sorted(list(group["modes"])),
                 "stations": sorted(list(group["stations"])), "latest_time": group["latest_time"],
-                "level": level, "message": "同一时间窗口内多个 SN 出现相同或相近测试项 FAIL，建议工程师复核机台状态。",
+                "level": level, "message": "短时间内多产品在同一节点 Fail，疑似机台探针或仪表物理异常，需工程师排查。",
                 "examples": group["records"][:5],
             })
 

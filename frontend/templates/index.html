@@ -2,413 +2,376 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FCT Smart Monitor | 全维度工控终端</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Lexend:wght@300;400;500&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+    <title>FCT Smart Monitor | 工业效能诊断中枢</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Lexend:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
-
     <style>
         :root {
-            /* CPU 渲染优化：禁用模糊与透明度混合 */
-            --bg-base: #06090e;
-            --bg-canvas: #0b121c;
-            --surface: #151f2d; 
-            --surface-bright: #1c2a3d;
-            --accent-blue: #4285f4;
-            --accent-green: #34a853;
-            --accent-red: #ea4335;
-            --text-main: #e8eaed;
-            --text-dim: #9aa0a6;
-            --border-soft: #263445;
-            
-            --font-header: 'Lexend', system-ui, sans-serif;
-            --font-body: 'Inter', system-ui, sans-serif;
+            --bg-base: #03060b;
+            --bg-canvas: #090e16;
+            --surface: #111a27; 
+            --surface-hover: #172233;
+            --surface-bright: #1f2d40;
+            --accent: #3b82f6;
+            --green: #10b981;
+            --red: #ef4444;
+            --yellow: #f59e0b;
+            --text-main: #f3f4f6;
+            --text-dim: #94a3b8;
+            --border: rgba(255, 255, 255, 0.08);
             --font-mono: 'JetBrains Mono', monospace;
-
-            --radius-lg: 16px;
-            --radius-md: 12px;
-            --ease-fast: cubic-bezier(0.25, 0.1, 0.25, 1);
+            --gap: 24px;
         }
 
         * { box-sizing: border-box; -webkit-font-smoothing: antialiased; }
-        body { margin: 0; background: var(--bg-base); color: var(--text-main); font-family: var(--font-body); height: 100vh; display: flex; overflow: hidden; }
+        body { margin: 0; background: var(--bg-base); color: var(--text-main); font-family: 'Inter', sans-serif; display: flex; height: 100vh; overflow: hidden; }
 
         /* 侧边栏 */
-        .sidebar { width: 200px; background: #000; border-right: 1px solid var(--border-soft); display: flex; flex-direction: column; padding: 30px 16px; gap: 20px; z-index: 100; }
-        .logo { width: 40px; height: 40px; background: var(--accent-blue); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-weight: 600; color: white; font-family: var(--font-header); margin-left: 10px; margin-bottom: 20px; }
-        .nav-item { padding: 12px 16px; border-radius: 12px; display: flex; align-items: center; cursor: pointer; color: var(--text-dim); transition: background 0.2s var(--ease-fast); gap: 12px; }
-        .nav-item i { font-style: normal; font-size: 18px; }
-        .nav-item span { font-family: var(--font-header); font-size: 14px; font-weight: 400; }
-        .nav-item:hover, .nav-item.active { background: var(--surface-bright); color: white; }
+        .sidebar { width: 240px; background: var(--bg-canvas); border-right: 1px solid var(--border); padding: 32px 20px; display: flex; flex-direction: column; gap: 8px; flex-shrink: 0; }
+        .logo-box { display: flex; align-items: center; gap: 12px; margin-bottom: 40px; padding-left: 10px; }
+        .logo-icon { width: 32px; height: 32px; background: var(--accent); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: 600; color: white; box-shadow: 0 0 15px rgba(59, 130, 246, 0.4); }
+        .nav-item { padding: 14px 16px; border-radius: 12px; cursor: pointer; color: var(--text-dim); transition: 0.3s; display: flex; align-items: center; gap: 14px; font-family: 'Lexend'; font-size: 14px; }
+        .nav-item:hover { background: var(--surface); color: white; }
+        .nav-item.active { background: var(--surface-bright); color: white; box-shadow: inset 3px 0 0 var(--accent); }
 
-        /* 画布与面板 */
-        .viewport { flex: 1; padding: 32px; overflow-y: auto; background: var(--bg-base); position: relative; }
-        header { margin-bottom: 40px; display: flex; justify-content: space-between; align-items: flex-end; }
-        header h1 { font-family: var(--font-header); font-size: 30px; font-weight: 400; margin: 0; color: white; }
-        .sys-badge { font-family: var(--font-header); background: var(--surface); padding: 8px 16px; border-radius: 20px; border: 1px solid var(--border-soft); font-size: 12px; color: var(--accent-blue); }
+        /* 主视口布局 */
+        .viewport { flex: 1; display: flex; flex-direction: column; height: 100vh; overflow: hidden; background: var(--bg-base); }
+        header { padding: 32px 40px 10px 40px; flex-shrink: 0; display: flex; justify-content: space-between; align-items: center; }
+        header h1 { font-family: 'Lexend'; font-size: 24px; margin: 0; color: white; letter-spacing: -0.5px; }
+        .sync-badge { font-size: 11px; color: var(--green); background: rgba(16, 185, 129, 0.1); padding: 6px 12px; border-radius: 20px; border: 1px solid rgba(16, 185, 129, 0.2); }
 
-        .view-panel { display: none; }
-        .view-panel.active { display: block; }
-
-        /* UI 组件 */
-        .metrics-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 32px; }
-        .metric-tile { background: var(--surface); border: 1px solid var(--border-soft); border-radius: var(--radius-lg); padding: 24px; }
-        .metric-tile .label { font-family: var(--font-header); color: var(--text-dim); font-size: 13px; text-transform: uppercase; letter-spacing: 1px; }
-        .metric-tile .value { font-family: var(--font-header); font-size: 40px; margin: 12px 0 0; color: white; }
-
-        .panel-card { background: var(--surface); border-radius: var(--radius-lg); padding: 28px; border: 1px solid var(--border-soft); margin-bottom: 28px; }
-        .panel-card h3 { font-family: var(--font-header); font-size: 18px; font-weight: 500; margin: 0 0 20px; color: #fff; }
+        .scroll-area { flex: 1; overflow-y: auto; padding: 10px 40px 40px 40px; }
         
-        .search-wrapper input { font-family: var(--font-body); width: 100%; background: #000; border: 1px solid var(--border-soft); border-radius: 12px; padding: 14px 20px; color: white; outline: none; margin-bottom: 24px; }
-        .table-container { border-radius: 12px; overflow: hidden; border: 1px solid var(--border-soft); }
-        table { width: 100%; border-collapse: collapse; }
-        th { font-family: var(--font-header); text-align: left; padding: 14px; font-size: 11px; color: var(--text-dim); background: #0e1622; text-transform: uppercase; }
-        td { padding: 12px 14px; border-bottom: 1px solid var(--border-soft); font-size: 13px; color: #cbd5e0; }
-        tr.row-link:hover { background: #1c2a3d; cursor: pointer; }
-        .mono { font-family: var(--font-mono); }
+        .tab-panel { display: none; }
+        .tab-panel.active { display: block; animation: fadeIn 0.3s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 
-        .badge { font-family: var(--font-header); padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; display: inline-block; }
-        .b-pass { background: #1b3d27; color: #81c995; }
-        .b-fail { background: #4d1c1c; color: #f28b82; }
-        .b-int { background: #1c2d4d; color: #8ab4f8; }
+        /* 卡片 */
+        .grid-top { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--gap); margin-bottom: var(--gap); }
+        .card { background: var(--surface); border-radius: 20px; border: 1px solid var(--border); padding: 24px; box-shadow: 0 8px 32px rgba(0,0,0,0.2); }
+        .m-label { font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 8px; }
+        .m-value { font-size: 32px; font-family: 'Lexend'; color: white; line-height: 1; }
 
-        /* 趋势分析专属样式 */
-        .trend-controls { display: flex; gap: 20px; align-items: center; flex-wrap: wrap; margin-bottom: 24px; }
-        .trend-input { background: #000; border: 1px solid var(--border-soft); color: #fff; padding: 10px 14px; border-radius: 8px; font-family: var(--font-mono); outline: none; }
-        .trend-btn { background: var(--accent-blue); color: #fff; border: none; padding: 10px 24px; border-radius: 8px; cursor: pointer; font-family: var(--font-header); font-weight: 500; }
-        .trend-btn:hover { background: #5a9cf8; }
-        .chart-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); gap: 24px; }
-        .chart-box { background: var(--surface); border: 1px solid var(--border-soft); border-radius: 12px; height: 300px; padding: 16px; }
+        /* 搜索框 */
+        .search-bar { position: relative; margin-bottom: 20px; }
+        .search-bar input { 
+            width: 100%; background: var(--bg-canvas); border: 1px solid var(--border); 
+            border-radius: 12px; padding: 12px 16px 12px 42px; color: white; outline: none; font-size: 14px;
+        }
+        .search-bar::before { content: '🔍'; position: absolute; left: 16px; top: 50%; transform: translateY(-50%); opacity: 0.5; }
 
-        /* 模态框 */
-        .modal-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.9); z-index: 1000; display: none; align-items: center; justify-content: center; }
+        /* 表格控制 */
+        .table-box { border-radius: 12px; overflow: hidden; border: 1px solid var(--border); background: var(--bg-canvas); }
+        .table-scroll { max-height: 600px; overflow-y: auto; }
+        table { width: 100%; border-collapse: collapse; text-align: left; }
+        thead { position: sticky; top: 0; z-index: 10; background: var(--surface-bright); }
+        th { padding: 14px 16px; font-size: 11px; color: var(--text-dim); text-transform: uppercase; border-bottom: 1px solid var(--border); }
+        td { padding: 14px 16px; font-size: 13px; border-bottom: 1px solid var(--border); color: #cbd5e1; }
+        tr.row-link:hover { background: var(--surface-hover); cursor: pointer; }
+
+        /* 弹窗系统 */
+        .modal-overlay { 
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(10px);
+            z-index: 9999; display: none; align-items: center; justify-content: center;
+        }
         .modal-overlay.active { display: flex; }
-        .modal-content { width: 94%; max-width: 1100px; height: 88vh; background: var(--bg-canvas); border-radius: var(--radius-lg); border: 1px solid var(--border-soft); display: flex; flex-direction: column; }
-        .modal-header { padding: 24px; border-bottom: 1px solid var(--border-soft); display: flex; justify-content: space-between; align-items: center; }
-        .modal-body { flex: 1; padding: 24px; overflow-y: auto; }
-        .btn-close { width: 40px; height: 40px; border-radius: 50%; border: none; background: var(--surface-bright); color: white; cursor: pointer; font-size: 20px; }
+        .modal-card { width: 94%; max-width: 1200px; height: 90vh; background: var(--bg-canvas); border-radius: 24px; border: 1px solid rgba(255,255,255,0.1); display: flex; flex-direction: column; overflow: hidden; }
+        .modal-header { padding: 24px 32px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; }
+        .modal-body { flex: 1; padding: 32px; overflow-y: auto; }
+
+        .badge { font-family: 'Lexend'; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 600; }
+        .b-pass { background: rgba(16, 185, 129, 0.1); color: var(--green); }
+        .b-fail { background: rgba(239, 68, 68, 0.1); color: var(--red); font-weight: 700; }
+        .b-int { background: rgba(245, 158, 11, 0.1); color: var(--yellow); }
+
+        .chart-box { background: var(--surface); border-radius: 16px; border: 1px solid var(--border); height: 280px; padding: 15px; }
+        .mono { font-family: var(--font-mono); }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-thumb { background: var(--surface-bright); border-radius: 10px; }
     </style>
 </head>
 <body>
 
     <nav class="sidebar">
-        <div class="logo">Σ</div>
-        <div class="nav-item active" onclick="switchPanel('overview', this)"><i>📊</i><span>综合看板</span></div>
-        <div class="nav-item" onclick="switchPanel('analysis', this)"><i>🔬</i><span>深度分析</span></div>
-        <div class="nav-item" onclick="switchPanel('monitor', this)"><i>📡</i><span>机台遥测</span></div>
-        <div class="nav-item" onclick="switchPanel('trends', this)"><i>📈</i><span>参数趋势</span></div>
+        <div class="logo-box"><div class="logo-icon">Σ</div><div style="font-family:'Lexend'; font-weight:600; font-size:18px;">FCT Monitor</div></div>
+        <div class="nav-item active" onclick="switchPanel('overview', this)"><i>🌌</i><span>核心效能看板</span></div>
+        <div class="nav-item" onclick="switchPanel('fails', this)"><i>🚨</i><span>异常档案中心</span></div>
+        <div class="nav-item" onclick="switchPanel('monitor', this)"><i>📡</i><span>实时机台遥测</span></div>
+        <div class="nav-item" onclick="switchPanel('trends', this)"><i>📈</i><span>SPC 趋势追溯</span></div>
     </nav>
 
     <main class="viewport">
         <header>
-            <div class="h-text">
-                <h1 id="viewTitle">工程诊断概览</h1>
-                <p style="color:var(--text-dim); font-size:14px; margin-top:8px;" id="viewSubtitle">工控机防卡顿模式已激活</p>
-            </div>
-            <div class="sys-badge" id="syncStatus">数据同步中...</div>
+            <h1 id="viewTitle">工业效能实时诊断看板</h1>
+            <div id="syncStatus" class="sync-badge">数据引擎连接中...</div>
         </header>
 
-        <section id="overview" class="view-panel active">
-            <div class="metrics-container">
-                <div class="metric-tile"><div class="label">Total Logs</div><div class="value" id="sTotal">0</div></div>
-                <div class="metric-tile"><div class="label">PASS</div><div class="value" style="color:var(--accent-green)" id="sPass">0</div></div>
-                <div class="metric-tile"><div class="label">FAIL</div><div class="value" style="color:var(--accent-red)" id="sFail">0</div></div>
-                <div class="metric-tile"><div class="label">Interrupt</div><div class="value" style="color:var(--accent-blue)" id="sInt">0</div></div>
-            </div>
-            <div class="panel-card">
-                <div class="search-wrapper"><input type="text" id="snFilter" placeholder="搜索 SN 或型号..." onkeyup="filterRecords()"></div>
-                <div class="table-container">
-                    <table>
-                        <thead><tr><th>产品 SN</th><th>型号</th><th>状态</th><th>测试时间</th><th>操作</th></tr></thead>
-                        <tbody id="logStream"></tbody>
-                    </table>
+        <div class="scroll-area">
+            
+            <section id="overview" class="tab-panel active">
+                <div class="grid-top">
+                    <div class="card"><div class="m-label">Total Logs</div><div class="m-value mono" id="sTotal">0</div></div>
+                    <div class="card"><div class="m-label" style="color:var(--green)">Pass</div><div class="m-value mono" style="color:var(--green)" id="sPass">0</div></div>
+                    <div class="card" style="cursor:pointer; border-color:var(--red);" onclick="switchPanel('fails', document.querySelectorAll('.nav-item')[1])">
+                        <div class="m-label" style="color:var(--red)">Fail (点击分析)</div><div class="m-value mono" style="color:var(--red)" id="sFail">0</div>
+                    </div>
+                    <div class="card"><div class="m-label" style="color:var(--yellow)">Interrupt</div><div class="m-value mono" style="color:var(--yellow)" id="sInt">0</div></div>
                 </div>
-            </div>
-        </section>
 
-        <section id="analysis" class="view-panel">
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
-                <div class="panel-card">
-                    <h3>型号良率统计</h3>
-                    <div class="table-container"><table><thead><tr><th>型号</th><th>总量</th><th>PASS</th><th>FAIL</th></tr></thead><tbody id="modelSummaryBody"></tbody></table></div>
+                <div class="grid-top" style="grid-template-columns: 1fr 1fr;">
+                    <div class="card"><div class="m-label">FPY (一次通过率)</div><div class="m-value" style="color:var(--green)" id="fpyV">0%</div></div>
+                    <div class="card"><div class="m-label">Retest Rate (复测率)</div><div class="m-value" style="color:var(--yellow)" id="retestV">0%</div></div>
                 </div>
-                <div class="panel-card">
-                    <h3>物理链路预警</h3>
-                    <div class="table-container"><table><thead><tr><th>时间窗口</th><th>预警项</th><th>故障数</th><th>级别</th></tr></thead><tbody id="riskBody"></tbody></table></div>
-                </div>
-            </div>
-        </section>
 
-        <section id="monitor" class="view-panel">
-            <div class="metrics-container" style="margin-bottom: 24px;">
-                <div class="metric-tile" style="padding:20px;"><div class="label">机台总数</div><div class="value" style="font-size:32px;" id="mTotal">0</div></div>
-                <div class="metric-tile" style="padding:20px;"><div class="label">在线</div><div class="value" style="font-size:32px; color:var(--accent-green);" id="mOnline">0</div></div>
-                <div class="metric-tile" style="padding:20px;"><div class="label">离线</div><div class="value" style="font-size:32px; color:var(--accent-red);" id="mOffline">0</div></div>
-            </div>
-            <div id="machineGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px;">
+                <div style="display:grid; grid-template-columns: 1fr 1.2fr; gap:24px; margin-top:24px; margin-bottom:24px;">
+                    <div class="card">
+                        <h3 style="font-family:'Lexend'; margin:0 0 15px 0; font-size:15px;">⚠️ CPK 预警红榜</h3>
+                        <div class="table-box"><div class="table-scroll" style="max-height: 250px;"><table id="cpkTable"><thead><tr><th>测项</th><th>CPK</th><th>Sample</th></tr></thead><tbody></tbody></table></div></div>
+                    </div>
+                    <div class="card">
+                        <h3 style="font-family:'Lexend'; margin:0 0 15px 0; font-size:15px;">📊 故障柏拉图 (Pareto)</h3>
+                        <div id="paretoChart" style="height: 250px; width: 100%;"></div>
+                    </div>
                 </div>
-        </section>
 
-        <section id="trends" class="view-panel">
-            <div class="panel-card">
-                <h3 style="margin-bottom: 16px;">测试参数历史追溯 (SPC)</h3>
-                <div class="trend-controls">
-                    <label style="color:var(--text-dim); font-size:13px;">起始日期</label>
-                    <input type="date" id="trendStart" class="trend-input">
-                    
-                    <label style="color:var(--text-dim); font-size:13px; margin-left: 10px;">截止日期</label>
-                    <input type="date" id="trendEnd" class="trend-input">
-                    
-                    <button class="trend-btn" onclick="executeTrendAnalysis()">生成散点矩阵</button>
-                    
-                    <div id="trendSummaryText" class="mono" style="margin-left: auto; color: var(--accent-green); font-size: 13px;">等待执行查询...</div>
+                <div class="card">
+                    <div class="search-bar"><input type="text" id="streamSearch" placeholder="搜索 SN 或 型号..." onkeyup="filterStream()"></div>
+                    <div class="table-box"><div class="table-scroll"><table><thead><tr><th>SN</th><th>型号</th><th>判定</th><th>时间</th><th>操作</th></tr></thead><tbody id="logStreamBody"></tbody></table></div></div>
                 </div>
-                <div class="search-wrapper" style="margin-bottom: 0;">
-                    <input type="text" id="trendSearch" placeholder="搜索特定的测试项节点以查看趋势图..." onkeyup="filterTrendCharts()">
+            </section>
+
+            <section id="fails" class="tab-panel">
+                <div class="card" style="border-color: rgba(239, 68, 68, 0.3);">
+                    <div class="search-bar"><input type="text" id="failSearch" placeholder="过滤异常 SN 或具体错误..." onkeyup="filterFails()"></div>
+                    <div class="table-box"><div class="table-scroll" style="max-height: 700px;"><table><thead><tr><th>SN</th><th>型号</th><th>具体判定</th><th>测试完成时间</th><th>详情分析</th></tr></thead><tbody id="failCenterBody"></tbody></table></div></div>
                 </div>
-            </div>
-            <div id="trendChartsContainer" class="chart-grid"></div>
-        </section>
+            </section>
+
+            <section id="monitor" class="tab-panel">
+                <div id="machineGrid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(340px, 1fr)); gap:24px;"></div>
+            </section>
+
+            <section id="trends" class="tab-panel">
+                <div class="search-bar"><input type="text" id="spcSearchInput" placeholder="输入测点关键词过滤趋势图..." onkeyup="filterSPC()"></div>
+                <div id="spcContainer" style="display:grid; grid-template-columns:repeat(4, 1fr); gap:16px;"></div>
+            </section>
+        </div>
     </main>
 
     <div class="modal-overlay" id="diagModal">
-        <div class="modal-content">
+        <div class="modal-card">
             <div class="modal-header">
-                <div><h2 id="modalSnTitle" style="margin:0; font-family:var(--font-header);">SN: ---</h2><p id="modalPath" class="mono" style="font-size:12px; color:var(--text-dim); margin-top:8px;"></p></div>
-                <button class="btn-close" onclick="closeDiag()">×</button>
+                <div>
+                    <h2 id="mSn" class="mono" style="margin:0; font-size:22px; color:white;">SN: ---</h2>
+                    <div style="display:flex; gap:16px; margin-top:8px;"><span id="mModel" class="badge" style="background:var(--accent); color:white;">MODEL: ---</span><span id="mTime" style="font-size:12px; color:var(--text-dim);">TIME: ---</span></div>
+                </div>
+                <button onclick="closeDiag()" style="background:none; border:1px solid var(--border); color:white; cursor:pointer; width:36px; height:36px; border-radius:50%;">×</button>
             </div>
             <div class="modal-body">
-                <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px;">
-                    <div style="background:#0e1622; padding:16px; border-radius:8px;"><label style="font-size:11px; color:var(--text-dim); display:block; margin-bottom:4px;">Total</label><span id="mTotalTests">0</span></div>
-                    <div style="background:#0e1622; padding:16px; border-radius:8px;"><label style="font-size:11px; color:var(--text-dim); display:block; margin-bottom:4px;">Pass</label><span id="mPassTests" style="color:var(--accent-green)">0</span></div>
-                    <div style="background:#0e1622; padding:16px; border-radius:8px;"><label style="font-size:11px; color:var(--text-dim); display:block; margin-bottom:4px;">Fail</label><span id="mFailTests" style="color:var(--accent-red)">0</span></div>
-                    <div style="background:#0e1622; padding:16px; border-radius:8px;"><label style="font-size:11px; color:var(--text-dim); display:block; margin-bottom:4px;">Skip/Int</label><span id="mIntTests" style="color:var(--accent-blue)">0</span></div>
+                <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:16px; margin-bottom:24px;">
+                    <div class="card" style="padding:15px; text-align:center;"><div class="m-label">总测试项</div><div class="m-value mono" id="mTotal" style="font-size:24px;">0</div></div>
+                    <div class="card" style="padding:15px; text-align:center;"><div class="m-label" style="color:var(--green)">通过项</div><div class="m-value mono" id="mPass" style="font-size:24px; color:var(--green)">0</div></div>
+                    <div class="card" style="padding:15px; text-align:center;"><div class="m-label" style="color:var(--red)">失败项</div><div class="m-value mono" id="mFail" style="font-size:24px; color:var(--red)">0</div></div>
+                    <div class="card" style="padding:15px; text-align:center;"><div class="m-label" style="color:var(--yellow)">中断/跳过</div><div class="m-value mono" id="mInt" style="font-size:24px; color:var(--yellow)">0</div></div>
                 </div>
-                
-                <div id="mFailAlert" style="background:rgba(234, 67, 53, 0.05); border:1px solid rgba(234, 67, 53, 0.15); border-radius:12px; padding:24px; margin-bottom:24px; display:none;">
-                    <h4 style="color:var(--accent-red); margin:0 0 12px; font-weight:500;">⚠ 仪表排查指南</h4>
-                    <div id="mFailList"></div>
+                <div id="mAdviceBox" style="padding:20px; border-radius:12px; border:1px solid var(--border); background:rgba(255,255,255,0.03); margin-bottom:24px; display:flex; gap:15px; align-items:center;">
+                    <div style="font-size:28px;">💡</div>
+                    <div><h4 style="margin:0 0 5px 0; font-size:15px;" id="mAdviceTitle">分析结论</h4><p style="margin:0; font-size:13px; color:var(--text-dim);" id="mAdviceText"></p></div>
                 </div>
-
-                <div class="table-container">
-                    <table>
-                        <thead><tr><th>测试步骤</th><th>判定</th><th>实测值</th><th>限值</th><th>仪表设备</th></tr></thead>
-                        <tbody id="mRawBody"></tbody>
-                    </table>
-                </div>
+                <div class="table-box"><table><thead><tr><th>测试步骤</th><th>判定</th><th>实测值</th><th>规格限值</th></tr></thead><tbody id="mRawBody"></tbody></table></div>
             </div>
         </div>
     </div>
 
     <script>
         let __STORE__ = [];
-        let __TRENDS_DATA__ = []; 
-
-        document.getElementById('trendEnd').valueAsDate = new Date();
-        let weekAgo = new Date();
-        weekAgo.setDate(weekAgo.getDate() - 7);
-        document.getElementById('trendStart').valueAsDate = weekAgo;
+        let __SPC_DATA__ = [];
+        let __CHART_INSTS__ = [];
+        let paretoChart = null;
 
         function switchPanel(id, el) {
-            document.querySelectorAll('.view-panel').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
             document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
             document.getElementById(id).classList.add('active');
             el.classList.add('active');
             
-            const titles = { overview: '工程诊断概览', analysis: '深度分析预警', monitor: '机台实时遥测', trends: '全局参数趋势溯源' };
+            const titles = { overview: '工业效能实时诊断看板', fails: '🚨 异常档案追溯中心', monitor: '实时机台遥测', trends: 'SPC 全局趋势追溯' };
             document.getElementById('viewTitle').innerText = titles[id];
-            
-            if (id !== 'trends') pullData(); 
-            if (id === 'monitor') loadMachines();
-            if (id === 'trends' && __TRENDS_DATA__.length === 0) executeTrendAnalysis();
+
+            if(id === 'monitor') loadMachines();
+            if(id === 'trends') loadSPC();
+            if(id === 'fails') renderFailCenter();
+            if(id === 'overview') {
+                if(paretoChart) setTimeout(() => paretoChart.resize(), 100);
+            }
         }
 
-        function getBadge(s) {
-            const u = String(s || "").toUpperCase();
-            if (u === 'PASS' || u === 'PASSED') return `<span class="badge b-pass">PASS</span>`;
-            if (u === 'FAIL' || u === 'FAILED') return `<span class="badge b-fail">FAIL</span>`;
+        // 🌟 鲁棒判定逻辑 🌟
+        const isPass = (r) => String(r.result || r.business_result || "").toUpperCase().includes('PASS');
+        const isFail = (r) => {
+            const res = String(r.result || r.business_result || "").toUpperCase();
+            return res.includes('FAIL') || (parseInt(r.failed_tests||0) > 0);
+        };
+
+        const getBadge = (r) => {
+            if (isPass(r)) return `<span class="badge b-pass">PASS</span>`;
+            if (isFail(r)) return `<span class="badge b-fail">FAIL</span>`;
             return `<span class="badge b-int">中断</span>`;
-        }
+        };
 
-        async function pullData() {
+        async function refresh() {
             try {
-                const r = await fetch('/api/recent?limit=40');
-                const data = await r.json();
-                __STORE__ = data;
-                if (!document.getElementById('snFilter').value) renderList(data);
-                
                 const stats = await (await fetch('/api/stats')).json();
+                const ana = await (await fetch('/api/analysis')).json();
+                // 增大拉取量确保异常档案不为空
+                const recent = await (await fetch('/api/recent?limit=1000')).json();
+                __STORE__ = recent;
+
                 document.getElementById('sTotal').innerText = stats.total;
                 document.getElementById('sPass').innerText = stats.pass;
                 document.getElementById('sFail').innerText = stats.fail;
                 document.getElementById('sInt').innerText = stats.interrupt;
+                document.getElementById('fpyV').innerText = (ana.fpy_rate || 0) + '%';
+                document.getElementById('retestV').innerText = (ana.unique_sn > 0 ? (ana.retest_count/ana.unique_sn*100) : 0).toFixed(1) + '%';
 
-                if(document.getElementById('analysis').classList.contains('active')) {
-                    const ana = await (await fetch('/api/analysis')).json();
-                    const ms = ana.model_summary || {};
-                    document.getElementById('modelSummaryBody').innerHTML = Object.keys(ms).map(m => `
-                        <tr><td class="mono">${m}</td><td>${ms[m].total}</td><td style="color:var(--accent-green)">${ms[m].PASS}</td><td style="color:var(--accent-red)">${ms[m].FAIL}</td></tr>
-                    `).join("");
-                    
-                    const risks = ana.station_risk || [];
-                    const riskBody = document.getElementById('riskBody');
-                    if (risks.length === 0) {
-                        riskBody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:20px; color:var(--text-dim);">未检测到风险预警</td></tr>`;
-                    } else {
-                        riskBody.innerHTML = risks.map(risk => `
-                            <tr><td class="mono" style="font-size:12px;">${risk.time_window}</td><td style="color:#fff;">${risk.item}</td><td>${risk.fail_count}</td><td><span class="badge b-fail">${risk.level}</span></td></tr>
-                        `).join("");
-                    }
-                }
+                document.querySelector('#cpkTable tbody').innerHTML = (ana.cpk_top || []).map(c => `
+                    <tr><td class="mono" style="font-size:11px;">${c.item}</td><td style="color:${c.cpk<1.33?'var(--red)':'var(--green)'}; font-weight:600;">${c.cpk}</td><td class="mono">${c.samples}</td></tr>
+                `).join('');
+
+                renderStream(recent.slice(0, 100));
+                renderPareto(ana.pareto);
+                
                 document.getElementById('syncStatus').innerText = `同步成功 | ${new Date().toLocaleTimeString()}`;
-            } catch (e) {}
+            } catch(e) { document.getElementById('syncStatus').innerText = '连接异常'; }
         }
 
-        function renderList(data) {
-            document.getElementById('logStream').innerHTML = data.map(rec => `
-                <tr class="row-link" onclick="showDiagBySn('${rec.sn}')">
-                    <td class="mono" style="color:#fff;">${rec.sn}</td><td>${rec.model}</td>
-                    <td>${getBadge(rec.result)}</td><td style="font-size:12px; color:var(--text-dim);">${rec.time}</td>
-                    <td style="color:var(--accent-blue); font-weight:500;">详情</td>
+        function renderStream(data) {
+            document.getElementById('logStreamBody').innerHTML = data.map(r => `
+                <tr class="row-link" onclick="showDiag('${r.sn}')">
+                    <td class="mono" style="color:white;">${r.sn}</td><td class="mono">${r.model}</td>
+                    <td>${getBadge(r)}</td><td class="mono" style="color:var(--text-dim); font-size:11px;">${r.time}</td>
+                    <td style="color:var(--accent); font-weight:600;">分析 ➔</td>
                 </tr>
-            `).join("");
+            `).join('');
         }
 
-        function filterRecords() {
-            const term = document.getElementById('snFilter').value.toLowerCase();
-            renderList(__STORE__.filter(r => (r.sn||"").toLowerCase().includes(term) || (r.model||"").toLowerCase().includes(term)));
+        // 🌟 异常档案中心渲染 🌟
+        function renderFailCenter(data) {
+            const list = data || __STORE__.filter(r => !isPass(r));
+            document.getElementById('failCenterBody').innerHTML = list.map(r => `
+                <tr class="row-link" onclick="showDiag('${r.sn}')">
+                    <td class="mono" style="color:var(--red); font-weight:600;">${r.sn}</td><td class="mono" style="color:white;">${r.model}</td>
+                    <td>${getBadge(r)}</td><td class="mono" style="font-size:12px; color:var(--text-dim);">${r.time}</td>
+                    <td style="color:var(--accent); font-weight:500;">点击回溯</td>
+                </tr>
+            `).join('');
         }
 
-        // ================= 核心修复：完整恢复的遥测模块 =================
+        function filterFails() {
+            const term = document.getElementById('failSearch').value.toLowerCase();
+            const allAnomalies = __STORE__.filter(r => !isPass(r));
+            renderFailCenter(allAnomalies.filter(r => r.sn.toLowerCase().includes(term) || r.model.toLowerCase().includes(term)));
+        }
+
+        function filterStream() {
+            const term = document.getElementById('streamSearch').value.toLowerCase();
+            renderStream(__STORE__.filter(r => r.sn.toLowerCase().includes(term) || r.model.toLowerCase().includes(term)).slice(0, 100));
+        }
+
+        function renderPareto(data) {
+            const dom = document.getElementById('paretoChart');
+            if(!dom || !data) return;
+            if(!paretoChart) paretoChart = echarts.init(dom);
+            paretoChart.setOption({
+                grid: { top: 30, bottom: 40, left: 40, right: 10 },
+                xAxis: { type: 'category', data: data.map(d=>d.item.substring(0,10)), axisLabel: { color: '#64748b', fontSize: 9 } },
+                yAxis: { type: 'value', splitLine: { lineStyle: { color: 'rgba(255,255,255,0.05)' } } },
+                series: [{ data: data.map(d=>d.count), type: 'bar', itemStyle: { color: '#3b82f6', borderRadius: [3,3,0,0] }, barWidth: '35%' }]
+            }, true);
+        }
+
         async function loadMachines() {
-            try {
-                const r = await fetch("/api/telemetry/latest");
-                const d = await r.json();
-                
-                // 更新顶部指标
-                document.getElementById('mTotal').innerText = d.total || 0;
-                document.getElementById('mOnline').innerText = d.online || 0;
-                document.getElementById('mOffline').innerText = d.offline || 0;
-                
-                const grid = document.getElementById('machineGrid');
-                if (!d.machines || d.machines.length === 0) {
-                    grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: var(--text-dim); padding: 40px;">暂无机台心跳数据</div>`;
-                } else {
-                    // 恢复全量电压电流、当前SN参数的卡片渲染
-                    grid.innerHTML = d.machines.map(m => `
-                        <div style="background:var(--surface); border-radius:16px; padding:24px; border:1px solid var(--border-soft);">
-                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
-                                <span style="font-family:var(--font-header); font-weight:500; font-size:18px; color:white;">${m.machine_id}</span>
-                                ${getBadge(m.online_status==='ONLINE'?'PASS':(m.online_status==='STALE'?'中断':'FAIL'))}
-                            </div>
-                            <div style="display:flex; justify-content:space-between; font-size:13px; color:var(--text-dim); margin-bottom:12px; border-bottom:1px solid rgba(255,255,255,0.03); padding-bottom:10px;">状态识别<b style="color:white;">${m.display_state}</b></div>
-                            <div style="display:flex; justify-content:space-between; font-size:13px; color:var(--text-dim); margin-bottom:12px; border-bottom:1px solid rgba(255,255,255,0.03); padding-bottom:10px;">型号/模式<b style="color:white;">${m.model || '-'} / ${m.test_mode}</b></div>
-                            <div style="display:flex; justify-content:space-between; font-size:13px; color:var(--text-dim); margin-bottom:12px; border-bottom:1px solid rgba(255,255,255,0.03); padding-bottom:10px;">当前 SN<b class="mono" style="color:white;">${m.current_sn || '-'}</b></div>
-                            <div style="display:flex; justify-content:space-between; font-size:13px; color:var(--text-dim); margin-bottom:12px; border-bottom:1px solid rgba(255,255,255,0.03); padding-bottom:10px;">监控参数<b style="color:white;">${m.measurements?.vin_voltage || '-'}V / ${m.measurements?.vin_current || '-'}A</b></div>
-                        </div>
-                    `).join("");
-                }
-            } catch(e){}
+            const d = await (await fetch('/api/telemetry/latest')).json();
+            document.getElementById('machineGrid').innerHTML = d.machines.map(m => `
+                <div class="card">
+                    <div style="display:flex; justify-content:space-between;"><b>${m.machine_id}</b><span class="badge ${m.online_status==='ONLINE'?'b-pass':'b-fail'}">${m.online_status}</span></div>
+                    <div style="font-size:12px; margin-top:10px; color:var(--text-dim);">IP: ${m.ip} | SN: ${m.current_sn}</div>
+                    <div class="mono" style="margin-top:10px; color:var(--accent); font-size:18px;">${m.measurements.vin_voltage || '0'}V / ${m.measurements.vin_current || '0'}A</div>
+                </div>
+            `).join('');
         }
 
-        // 弹窗与统计
-        function showDiagBySn(sn) {
-            const r = __STORE__.find(item => item.sn === sn);
-            if (r) {
-                document.getElementById('modalSnTitle').innerText = `SN: ${r.sn}`;
-                document.getElementById('modalPath').innerText = r.relative_path;
-                document.getElementById('mTotalTests').innerText = r.total_tests;
-                document.getElementById('mPassTests').innerText = r.passed_tests;
-                document.getElementById('mFailTests').innerText = r.failed_tests;
-                document.getElementById('mIntTests').innerText = r.interrupted_tests + r.skipped_tests;
-                
-                const box = document.getElementById('mFailAlert');
-                if(r.result === 'FAIL' && r.fail_items?.length > 0) {
-                    box.style.display = 'block';
-                    document.getElementById('mFailList').innerHTML = r.fail_items.map(f => `
-                        <div style="margin-bottom:12px;">
-                            <b class="mono" style="color:#fff;">● ${f.name}</b><br>
-                            <span style="font-size:13px; color:var(--text-dim);">[${f.instrument_device}] ${f.engineering_hint}</span>
-                        </div>
-                    `).join("");
-                } else { box.style.display = 'none'; }
-                
-                document.getElementById('mRawBody').innerHTML = (r.raw_items || []).slice(0, 150).map(ri => `
-                    <tr><td class="mono" style="font-size:12px;">${ri.name}</td><td>${getBadge(ri.status)}</td><td class="mono">${ri.value} ${ri.unit||''}</td><td>${ri.nominal_range||'-'}</td><td style="font-size:12px;">${ri.instrument_device}</td></tr>
-                `).join("");
-                document.getElementById('diagModal').classList.add('active');
-            }
+        async function loadSPC() {
+            const res = await fetch('/api/trends');
+            const data = await res.json();
+            __SPC_DATA__ = data.trends || [];
+            renderSPCGrid(__SPC_DATA__);
         }
 
-        function closeDiag() { document.getElementById('diagModal').classList.remove('active'); }
-
-        // 趋势图逻辑
-        async function executeTrendAnalysis() {
-            const start = document.getElementById('trendStart').value;
-            const end = document.getElementById('trendEnd').value;
-            const sumText = document.getElementById('trendSummaryText');
-            sumText.innerText = "数据聚合提取中...";
-            sumText.style.color = "var(--accent-yellow)";
-
-            try {
-                const res = await fetch(`/api/trends?start=${start}&end=${end}`);
-                const data = await res.json();
-                __TRENDS_DATA__ = data.trends;
-                sumText.innerText = `查询完毕: 分析日志 ${data.total_records} 份 | 拦截数值项 ${__TRENDS_DATA__.length} 个`;
-                sumText.style.color = "var(--accent-green)";
-                renderTrendCharts(__TRENDS_DATA__.slice(0, 20)); 
-            } catch(e) {
-                sumText.innerText = "聚合失败";
-                sumText.style.color = "var(--accent-red)";
-            }
+        function filterSPC() {
+            const term = document.getElementById('spcSearchInput').value.toLowerCase();
+            renderSPCGrid(__SPC_DATA__.filter(i => i.name.toLowerCase().includes(term)));
         }
 
-        function filterTrendCharts() {
-            const term = document.getElementById('trendSearch').value.toLowerCase();
-            const filtered = __TRENDS_DATA__.filter(t => t.name.toLowerCase().includes(term));
-            renderTrendCharts(filtered.slice(0, 20));
-        }
-
-        function renderTrendCharts(chartsData) {
-            const container = document.getElementById('trendChartsContainer');
-            container.innerHTML = ''; 
-            
-            if(chartsData.length === 0) {
-                container.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: var(--text-dim); padding: 40px;">未检索到相关参数的数值曲线</div>`;
-                return;
-            }
-
-            chartsData.forEach((item, index) => {
+        function renderSPCGrid(dataList) {
+            const container = document.getElementById('spcContainer');
+            container.innerHTML = '';
+            __CHART_INSTS__.forEach(c => c.dispose());
+            __CHART_INSTS__ = [];
+            dataList.forEach(item => {
                 const box = document.createElement('div');
                 box.className = 'chart-box';
-                box.id = 'chart_wrapper_' + index;
                 container.appendChild(box);
-                
-                const failCount = item.data.filter(d => d.status !== 'PASS').length;
-                let chart = echarts.init(box, null, { renderer: 'svg' });
-                
+                const chart = echarts.init(box);
                 chart.setOption({
-                    backgroundColor: 'transparent',
-                    title: { 
-                        text: item.name.length > 45 ? item.name.substring(0,45) + '...' : item.name, 
-                        subtext: `Fail: ${failCount} | 范围: ${item.limit}`,
-                        textStyle: { color: '#e8eaed', fontSize: 13, fontFamily: 'Lexend', fontWeight: 500 },
-                        subtextStyle: { color: failCount > 0 ? '#ea4335' : '#9aa0a6' }
-                    },
-                    tooltip: { trigger: 'item', backgroundColor: '#0b121c', borderColor: '#263445', textStyle: { color: '#e8eaed', fontFamily: 'JetBrains Mono', fontSize: 12 }, formatter: function(p) { return `SN: ${p.data.sn}<br>Time: ${p.data.time}<br>Val: <b style="color:${p.data.itemStyle.color}">${p.data.value}</b> ${item.unit}`; } },
-                    grid: { top: 50, bottom: 20, left: 45, right: 20 },
-                    xAxis: { type: 'category', show: false, data: item.data.map(d => d.time) },
-                    yAxis: { type: 'value', scale: true, splitLine: { lineStyle: { color: '#263445' } }, axisLabel: { color: '#9aa0a6', fontSize: 10 } },
-                    series: [{ type: 'scatter', symbolSize: 6, data: item.data.map(d => ({ value: d.value, sn: d.sn, time: d.time, itemStyle: { color: d.status === 'PASS' ? '#34a853' : '#ea4335' } })) }]
+                    title: { text: item.name, textStyle: { color: '#fff', fontSize: 11 }, subtext: `限值: ${item.limit}`, subtextStyle: { color: '#64748b', fontSize: 10 } },
+                    grid: { top: 65, bottom: 25, left: 40, right: 15 },
+                    xAxis: { type: 'category', show: false },
+                    yAxis: { type: 'value', scale: true, splitLine: { lineStyle: { color: 'rgba(255,255,255,0.05)' } }, axisLabel: { fontSize: 9 } },
+                    series: [{ data: item.data.map(d=>[d.time, d.value, d.status]), type: 'scatter', symbolSize: 4, itemStyle: { color: p=>String(p.data[2]).toUpperCase().includes('PASS')?'#10b981':'#ef4444' } }]
                 });
+                __CHART_INSTS__.push(chart);
             });
         }
 
-        setInterval(pullData, 5000);
-        setInterval(loadMachines, 5000);
-        pullData();
+        function showDiag(sn) {
+            const r = __STORE__.find(i => i.sn === sn);
+            if(!r) return;
+            document.getElementById('mSn').innerText = 'SN: ' + r.sn;
+            document.getElementById('mModel').innerText = 'MODEL: ' + (r.model || 'Auto');
+            document.getElementById('mTime').innerText = 'TIME: ' + r.time;
+            document.getElementById('mTotal').innerText = r.total_tests || 0;
+            document.getElementById('mPass').innerText = r.passed_tests || 0;
+            document.getElementById('mFail').innerText = r.failed_tests || 0;
+            document.getElementById('mInt').innerText = (r.interrupted_tests || 0) + (r.skipped_tests || 0);
+
+            const card = document.getElementById('mAdviceBox');
+            const title = document.getElementById('mAdviceTitle');
+            const text = document.getElementById('mAdviceText');
+            const hwFails = (r.fail_items || []).filter(f => !f.name.includes("Get Unit Information"));
+
+            if (isPass(r)) {
+                card.style.borderColor = 'var(--green)'; title.innerText = '✅ 健康放行';
+                text.innerText = '所有测点均正常。无需人工干预。';
+            } else if (hwFails.length === 0) {
+                card.style.borderColor = 'var(--yellow)'; title.innerText = '👤 操作拦截';
+                text.innerText = '条码读取失败。建议：检查扫码枪连线及条码完整度。';
+            } else {
+                card.style.borderColor = 'var(--red)'; title.innerText = '🛑 链路失效';
+                text.innerHTML = `检测到硬件链路异常。建议：检查探针接触。`;
+            }
+
+            document.getElementById('mRawBody').innerHTML = (r.raw_items || []).slice(0, 150).map(ri => `
+                <tr><td class="mono" style="font-size:11px;">${ri.name}</td><td>${getBadge({result:ri.status})}</td>
+                <td class="mono" style="color:white;">${ri.value} ${ri.unit||''}</td><td class="mono" style="color:#4b5563;">${ri.nominal_range}</td></tr>
+            `).join('');
+            document.getElementById('diagModal').classList.add('active');
+        }
+
+        function closeDiag() { document.getElementById('diagModal').classList.remove('active'); }
+        setInterval(refresh, 5000);
+        refresh();
     </script>
 </body>
 </html>
