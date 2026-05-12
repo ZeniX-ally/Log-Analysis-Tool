@@ -2,303 +2,325 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>FCT 效能诊断中枢</title>
+    <title>FCT 效能诊断中枢 | TE_NEXUS</title>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <style>
         /* ==========================================
-           1. 极简高性能变量定义区 (纯色系，拒绝昂贵渐变)
+           1. 航天级视觉引擎 (SpaceX + Tesla Hybrid)
         ========================================== */
         :root {
-            --bg-base: #05080c;       /* 深渊黑底色 */
-            --bg-panel: #0d1219;      /* 卡片底色 */
-            --bg-hover: #151d28;      /* 悬停反馈 */
+            --bg-deep-space: #030407; /* 深空纯黑 */
             
-            --border-light: #1c2838;  /* 常规边框 */
-            --border-focus: #2d4059;  /* 强边框 */
+            /* 毛玻璃面板底色与高光边框 */
+            --glass-bg: rgba(18, 22, 28, 0.65);
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --glass-hover: rgba(255, 255, 255, 0.05);
             
-            --text-main: #e2e8f0;     /* 主文本 */
-            --text-muted: #64748b;    /* 弱化文本 */
+            --text-main: #f8f9fa;
+            --text-muted: #8b949e;
             
-            --neo-green: #10b981;     /* 极客绿 */
-            --neo-red: #f43f5e;       /* 警示红 */
-            --neo-blue: #3b82f6;      /* 科技蓝 */
-            --neo-yellow: #f59e0b;    /* 预警黄 */
+            /* 高能荧光状态色 */
+            --astro-cyan: #00f2fe;    /* 科技青 */
+            --astro-green: #00ff9d;   /* 荧光绿 (PASS) */
+            --astro-red: #ff003c;     /* 聚变红 (FAIL) */
+            --astro-blue: #3a86ff;    /* 深空蓝 (中断) */
+            --astro-yellow: #ffbe0b;  /* 预警黄 */
             
-            --font-ui: "Segoe UI", "Microsoft YaHei", -apple-system, sans-serif;
-            --font-mono: "Consolas", "Monaco", "Courier New", monospace; /* 强制数字等宽 */
+            /* 航天级字体栈：硬朗、无衬线、数字强制等宽 */
+            --font-ui: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+            --font-num: "DIN Alternate", "Consolas", "Monaco", monospace;
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
         
         body { 
-            background: var(--bg-base); 
+            background-color: var(--bg-deep-space);
+            /* 注入 SpaceX 指令舱标志性的深空网格背景 */
+            background-image: 
+                linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+            background-size: 40px 40px;
+            background-position: center center;
+            
             color: var(--text-main); 
             font-family: var(--font-ui); 
-            font-size: 13px; 
+            font-size: 14px; 
             overflow: hidden; 
-            -webkit-font-smoothing: antialiased; /* 字体抗锯齿优化 */
+            -webkit-font-smoothing: antialiased; 
         }
 
-        /* 布局框架 */
-        .app { height: 100vh; display: grid; grid-template-columns: 240px 1fr; }
-        
-        .sidebar { 
-            background: #080c11; 
-            border-right: 1px solid var(--border-light); 
-            padding: 24px 16px; 
-            display: flex;
-            flex-direction: column;
+        /* 核心毛玻璃类 */
+        .glass-panel {
+            background: var(--glass-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
         }
-        .brand { font-size: 20px; font-weight: 900; color: #fff; letter-spacing: 1px; }
-        .brand-sub { font-family: var(--font-mono); color: var(--neo-blue); font-size: 10px; margin-top: 4px; margin-bottom: 30px; letter-spacing: 0.5px;}
+
+        .app { height: 100vh; display: grid; grid-template-columns: 260px 1fr; gap: 24px; padding: 24px; }
+        
+        .sidebar { padding: 32px 20px; display: flex; flex-direction: column; }
+        
+        .brand { font-size: 26px; font-weight: 800; color: #fff; letter-spacing: 1px; text-transform: uppercase; }
+        .brand-sub { color: var(--astro-cyan); font-size: 11px; margin-top: 6px; margin-bottom: 48px; font-family: var(--font-num); letter-spacing: 2px;}
         
         .nav-item { 
-            padding: 12px 14px; 
-            border-radius: 6px; 
+            padding: 16px 20px; 
+            border-radius: 8px; 
             color: var(--text-muted); 
             cursor: pointer; 
-            margin-bottom: 6px; 
+            margin-bottom: 12px; 
             font-weight: 600;
-            transition: all 0.15s ease-in-out; /* 极致轻量的过度动画 */
+            font-size: 15px;
+            letter-spacing: 0.5px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             border: 1px solid transparent;
         }
         .nav-item.active { 
-            background: rgba(59, 130, 246, 0.08); 
-            border: 1px solid rgba(59, 130, 246, 0.3); 
-            color: var(--neo-blue); 
+            background: rgba(0, 242, 254, 0.1); 
+            border-color: rgba(0, 242, 254, 0.3);
+            color: var(--astro-cyan); 
+            text-shadow: 0 0 10px rgba(0, 242, 254, 0.5);
         }
-        .nav-item:hover:not(.active) { background: var(--bg-hover); color: var(--text-main); }
+        .nav-item:hover:not(.active) { background: var(--glass-hover); color: var(--text-main); }
 
-        .main { padding: 24px 32px; overflow-y: auto; height: 100vh; display: flex; flex-direction: column;}
+        .main { overflow-y: auto; height: calc(100vh - 48px); display: flex; flex-direction: column; }
         
         /* 顶部标题区 */
-        .topbar { margin-bottom: 24px; flex-shrink: 0; border-bottom: 1px solid var(--border-light); padding-bottom: 16px;}
-        .title { font-size: 22px; font-weight: 800; color: #fff; letter-spacing: 0.5px;}
-        .subtitle { margin-top: 6px; color: var(--text-muted); font-size: 12px; font-family: var(--font-mono);}
+        .topbar { margin-bottom: 32px; flex-shrink: 0; display: flex; flex-direction: column; gap: 8px;}
+        .title { font-size: 32px; font-weight: 800; color: #fff; letter-spacing: 1px;}
+        .subtitle { color: var(--text-muted); font-size: 13px; font-family: var(--font-num); letter-spacing: 1px; text-transform: uppercase;}
         
         .panel { display: none; flex: 1; flex-direction: column; }
         .panel.active { display: flex; }
 
-        /* KPI 指标卡片 (无阴影扁平化) */
-        .cards { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 16px; margin-bottom: 20px; flex-shrink: 0;}
+        /* KPI 指标卡片 */
+        .cards { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 16px; margin-bottom: 24px; flex-shrink: 0;}
         .card { 
-            background: var(--bg-panel); 
-            border: 1px solid var(--border-light); 
-            border-radius: 4px; 
-            padding: 16px; 
-            border-top: 3px solid var(--border-light);
+            padding: 24px 20px; 
+            display: flex; flex-direction: column; justify-content: space-between;
+            position: relative; overflow: hidden;
         }
-        .card-name { color: var(--text-muted); font-size: 11px; text-transform: uppercase; font-weight: 700; margin-bottom: 8px; }
-        .card-value { color: #fff; font-size: 28px; font-weight: 800; font-family: var(--font-mono); }
+        /* 卡片顶部的高能发光线 */
+        .card::before {
+            content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+            background: var(--glass-border);
+        }
+        .card.neon-cyan::before { background: var(--astro-cyan); box-shadow: 0 0 10px var(--astro-cyan); }
+        .card.neon-green::before { background: var(--astro-green); box-shadow: 0 0 10px var(--astro-green); }
+        .card.neon-red::before { background: var(--astro-red); box-shadow: 0 0 10px var(--astro-red); }
+        .card.neon-yellow::before { background: var(--astro-yellow); box-shadow: 0 0 10px var(--astro-yellow); }
+        .card.neon-blue::before { background: var(--astro-blue); box-shadow: 0 0 10px var(--astro-blue); }
+
+        .card-name { color: var(--text-muted); font-size: 12px; font-weight: 700; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;}
+        .card-value { color: #fff; font-size: 36px; font-weight: 700; font-family: var(--font-num); letter-spacing: -1px;}
 
         /* 两列图表区 */
-        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
-        .box { 
-            background: var(--bg-panel); 
-            border: 1px solid var(--border-light); 
-            border-radius: 4px; 
-            padding: 20px; 
-            display: flex; 
-            flex-direction: column;
-        }
-        .box-title { color: #fff; font-weight: 700; font-size: 14px; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;}
-        .box-title::before { content: ""; display: block; width: 4px; height: 14px; background: var(--neo-blue); border-radius: 2px;}
-        
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px; }
+        .box { padding: 24px; display: flex; flex-direction: column; }
+        .box-title { color: #fff; font-weight: 700; font-size: 16px; margin-bottom: 24px; letter-spacing: 1px; text-transform: uppercase;}
         .chart-container { width: 100%; height: 320px; }
 
-        /* 工业级数据表格 */
-        .table-scroll { flex: 1; overflow-y: auto; background: var(--bg-base); border: 1px solid var(--border-light); border-radius: 4px;}
-        table { width: 100%; border-collapse: collapse; }
+        /* 工业级数据表格 (毛玻璃底板) */
+        .table-scroll { flex: 1; overflow-y: auto; }
+        table { width: 100%; border-collapse: collapse; text-align: left;}
         th { 
-            color: var(--text-muted); font-size: 11px; text-align: left; padding: 12px 16px; 
-            background: #090e14; border-bottom: 1px solid var(--border-light); 
-            position: sticky; top: 0; z-index: 2; font-weight: 700; text-transform: uppercase;
+            color: var(--text-muted); font-size: 12px; padding: 16px 24px; 
+            background: rgba(0,0,0,0.4); border-bottom: 1px solid var(--glass-border); 
+            position: sticky; top: 0; z-index: 2; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;
+            backdrop-filter: blur(10px);
         }
-        td { padding: 12px 16px; border-bottom: 1px solid var(--border-light); font-size: 12px; }
-        /* 使用等宽字体渲染关键列 */
-        td.mono { font-family: var(--font-mono); color: #cbd5e1; }
-        tr:hover td { background: var(--bg-hover); cursor: pointer;}
+        td { padding: 16px 24px; border-bottom: 1px solid var(--glass-border); font-size: 14px; color: #fff;}
+        td.mono { font-family: var(--font-num); font-size: 15px; color: var(--astro-cyan); }
+        tr:hover td { background: rgba(255,255,255,0.03); cursor: pointer;}
         
-        /* 霓虹风状态标签 (极低显卡渲染成本) */
+        /* 航天级发光状态标签 */
         .pill { 
-            display: inline-block; min-width: 68px; text-align: center; padding: 4px 0; 
-            border-radius: 2px; font-size: 11px; font-weight: 800; font-family: var(--font-mono);
+            display: inline-block; min-width: 80px; text-align: center; padding: 6px 12px; 
+            border-radius: 4px; font-size: 12px; font-weight: 800; font-family: var(--font-num);
+            letter-spacing: 1px; text-transform: uppercase;
         }
-        .pill-pass { color: var(--neo-green); border: 1px solid rgba(16, 185, 129, 0.3); background: rgba(16, 185, 129, 0.05); }
-        .pill-fail { color: var(--neo-red); border: 1px solid rgba(244, 63, 94, 0.3); background: rgba(244, 63, 94, 0.05); }
-        .pill-interrupt { color: var(--neo-blue); border: 1px solid rgba(59, 130, 246, 0.3); background: rgba(59, 130, 246, 0.05); }
+        .pill-pass { color: var(--astro-green); background: rgba(0, 255, 157, 0.1); border: 1px solid rgba(0, 255, 157, 0.3); box-shadow: inset 0 0 8px rgba(0, 255, 157, 0.1); }
+        .pill-fail { color: var(--astro-red); background: rgba(255, 0, 60, 0.1); border: 1px solid rgba(255, 0, 60, 0.3); box-shadow: inset 0 0 8px rgba(255, 0, 60, 0.1); }
+        .pill-interrupt { color: var(--astro-blue); background: rgba(58, 134, 255, 0.1); border: 1px solid rgba(58, 134, 255, 0.3); box-shadow: inset 0 0 8px rgba(58, 134, 255, 0.1); }
 
         /* 搜索框组 */
-        .search-row { display: flex; gap: 12px; margin-bottom: 16px; }
+        .search-row { display: flex; gap: 16px; margin-bottom: 24px; }
         input { 
-            background: var(--bg-base); border: 1px solid var(--border-light); color: var(--text-main); 
-            border-radius: 4px; padding: 10px 16px; flex: 1; outline:none; font-family: var(--font-mono);
-            transition: border-color 0.2s;
+            background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); color: #fff; 
+            border-radius: 8px; padding: 14px 24px; flex: 1; outline:none; 
+            font-size: 15px; font-family: var(--font-num);
+            transition: all 0.3s ease;
         }
-        input:focus { border-color: var(--neo-blue); }
+        input:focus { border-color: var(--astro-cyan); box-shadow: 0 0 10px rgba(0, 242, 254, 0.2); background: rgba(0,0,0,0.5); }
+        input::placeholder { color: #4b5563; }
+        
         button { 
-            background: var(--bg-hover); border: 1px solid var(--border-focus); color: #fff; 
-            padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: 600;
+            background: transparent; border: 1px solid var(--astro-cyan); color: var(--astro-cyan); 
+            padding: 0 32px; border-radius: 8px; cursor: pointer; font-weight: 700; font-size: 14px;
+            text-transform: uppercase; letter-spacing: 1px;
+            transition: all 0.3s ease;
         }
-        button:hover { background: #1e293b; }
+        button:hover { background: rgba(0, 242, 254, 0.1); box-shadow: 0 0 15px rgba(0, 242, 254, 0.3); }
 
         /* ==========================================
-           2. 弹窗优化 (移除耗性能的 backdrop-filter blur)
+           2. 深度沉浸式弹窗 (毛玻璃叠加层)
         ========================================== */
         .modal-mask {
             position: fixed; inset: 0; 
-            background: rgba(3, 5, 8, 0.95); /* 用高不透明度深黑替代模糊特效，节省海量GPU算力 */
+            background: rgba(0, 0, 0, 0.7); 
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
             z-index: 9999; display: flex; align-items: center; justify-content: center;
         }
         .modal-window {
-            width: min(1200px, 94vw); max-height: 92vh; 
-            background: var(--bg-panel);
-            border: 1px solid var(--border-focus); 
-            border-radius: 4px; 
-            /* 移除昂贵的多重黑影，改用单层微光 */
-            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            width: min(1200px, 92vw); max-height: 88vh; 
             display: flex; flex-direction: column;
+            overflow: hidden;
+            background: rgba(10, 12, 16, 0.85); /* 深色内层 */
         }
-        .modal-header { height: 60px; padding: 0 24px; border-bottom: 1px solid var(--border-light); display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;}
+        .modal-header { height: 72px; padding: 0 32px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; border-bottom: 1px solid var(--glass-border); background: rgba(0,0,0,0.2);}
+        
+        /* 纯圆极简关闭按钮 (Tesla 基因保留) */
         .modal-close {
-            width: 32px; height: 32px; border: 1px solid transparent; background: transparent; 
-            color: var(--text-muted); cursor: pointer; font-size: 28px; line-height: 28px; text-align: center;
+            width: 40px; height: 40px; 
+            border: 1px solid var(--glass-border); border-radius: 50%; 
+            background: rgba(255,255,255,0.05); 
+            color: var(--text-muted); cursor: pointer; 
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.2s ease; padding: 0;
         }
-        .modal-close:hover { color: #fff; }
-        .modal-body { padding: 20px 24px; overflow-y: auto; flex: 1; }
+        .modal-close svg { width: 20px; height: 20px; }
+        .modal-close:hover { background: rgba(255,255,255,0.1); color: #ffffff; border-color: rgba(255,255,255,0.2); transform: rotate(90deg); }
+
+        .modal-body { padding: 32px; overflow-y: auto; flex: 1; }
         
         /* 专家建议框 */
         .ai-advice-box { 
-            background: rgba(244, 63, 94, 0.05); border: 1px solid rgba(244, 63, 94, 0.2); 
-            border-left: 3px solid var(--neo-red); padding: 14px 18px; margin-bottom: 20px; 
-            color: #fff; font-size: 13px; line-height: 1.5;
+            background: rgba(255, 0, 60, 0.05); border: 1px solid rgba(255, 0, 60, 0.2);
+            border-left: 4px solid var(--astro-red);
+            padding: 20px 24px; margin-bottom: 32px; border-radius: 4px;
+            color: #fff; font-size: 15px; line-height: 1.6; font-weight: 500;
         }
         .ai-advice-box.advice-warn { 
-            background: rgba(245, 158, 11, 0.05); border-color: rgba(245, 158, 11, 0.2); 
-            border-left-color: var(--neo-yellow); 
+            background: rgba(255, 190, 11, 0.05); border-color: rgba(255, 190, 11, 0.2); border-left-color: var(--astro-yellow);
         }
         
-        .quadrant-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+        .quadrant-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 32px; }
         .quadrant-box { 
-            background: var(--bg-base); border: 1px solid var(--border-light); 
-            padding: 16px; border-radius: 4px; text-align: center; color: var(--text-muted); font-size: 11px; text-transform: uppercase;
+            background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); border-radius: 8px; 
+            padding: 24px; text-align: left; color: var(--text-muted); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;
         }
-        .quadrant-box b { font-family: var(--font-mono); font-size: 24px; display: block; margin-top: 8px; font-weight: 800;}
+        .quadrant-box b { font-family: var(--font-num); font-size: 36px; display: block; margin-top: 8px; font-weight: 700; letter-spacing: -1px;}
 
         /* 机台遥测卡片 */
-        .machine-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+        .machine-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 24px; }
         .machine-card { 
-            background: var(--bg-panel); border: 1px solid var(--border-light); border-radius: 4px; padding: 16px; 
-            border-top: 3px solid var(--border-light); transition: border-color 0.2s;
+            padding: 32px 24px; 
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
         }
-        .machine-card:hover { border-color: var(--border-focus); }
-        .machine-line { display: flex; justify-content: space-between; color: var(--text-muted); font-size: 12px; padding: 6px 0; border-bottom: 1px dashed var(--border-light); }
-        .machine-line b { font-family: var(--font-mono); color: #fff;}
+        .machine-card:hover { border-color: rgba(255,255,255,0.15); box-shadow: 0 12px 40px rgba(0,0,0,0.5); transform: translateY(-4px); }
+        .machine-line { display: flex; justify-content: space-between; color: var(--text-muted); font-size: 14px; padding: 12px 0; border-bottom: 1px dashed var(--glass-border); font-weight: 500;}
+        .machine-line:last-child { border-bottom: none; padding-bottom: 0;}
+        .machine-line b { font-family: var(--font-num); color: #fff; font-weight: 600; font-size: 16px;}
         
         /* 全量散点矩阵布局 */
-        .spc-dynamic-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 16px;
-            align-content: start;
-        }
-        .spc-wrapper {
-            background: var(--bg-base);
-            border: 1px solid var(--border-light);
-            border-radius: 4px;
-            padding: 8px;
-        }
+        .spc-dynamic-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px; align-content: start; }
+        .spc-wrapper { background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); border-radius: 12px; padding: 16px; }
 
         /* 滚动条极简处理 */
         ::-webkit-scrollbar { width: 8px; height: 8px; }
-        ::-webkit-scrollbar-track { background: var(--bg-base); }
-        ::-webkit-scrollbar-thumb { background: #2a3a4d; border-radius: 4px; border: 2px solid var(--bg-base); }
-        ::-webkit-scrollbar-thumb:hover { background: #40556e; }
+        ::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.3); }
     </style>
 </head>
 <body>
 <div class="app">
-    <aside class="sidebar">
-        <div class="brand">TE_NEXUS</div>
-        <div class="brand-sub">FCT AUTOMATION & DIAGNOSTICS</div>
+    <aside class="sidebar glass-panel">
+        <div class="brand">NEXUS FCT</div>
+        <div class="brand-sub">AEROSPACE DIAGNOSTICS</div>
+        
         <div class="nav-item active" onclick="switchPanel('overviewPanel', this)">[01] 效能监控大盘</div>
         <div class="nav-item" onclick="switchPanel('failCenterPanel', this)">[02] 异常隔离沙箱</div>
         <div class="nav-item" onclick="switchPanel('spcPanel', this)">[03] SPC 统计矩阵</div>
         <div class="nav-item" onclick="switchPanel('machinePanel', this)">[04] 物理链路遥测</div>
         
-        <div style="margin-top: auto; color: var(--text-muted); font-size: 10px; font-family: var(--font-mono); line-height: 1.6; border-top: 1px solid var(--border-light); padding-top: 16px;">
-            SYSTEM: OK<br>
-            RENDERER: HARDWARE ACCEL<br>
-            TARGET FPS: 60
+        <div style="margin-top: auto; color: var(--text-muted); font-size: 12px; font-weight: 600; font-family: var(--font-num); line-height: 2;">
+            <div style="color: var(--astro-cyan); margin-bottom: 4px; text-transform: uppercase; font-size: 10px; letter-spacing: 1px;">Telemetry Status</div>
+            LINK: <span style="color:var(--astro-green)">SECURE</span><br>
+            RENDER: <span style="color:#fff">GLASSMORPHISM</span>
         </div>
     </aside>
 
     <main class="main">
         <div class="topbar">
-            <div>
-                <div class="title" id="pageTitle">[01] 效能监控大盘</div>
-                <div class="subtitle" id="pageSub">SYS.MAIN_DASHBOARD // PRODUCTION ENVIRONMENT</div>
-            </div>
+            <div class="title" id="pageTitle">效能监控大盘</div>
+            <div class="subtitle" id="pageSub">SYS.MAIN_DASHBOARD // PRODUCTION ENVIRONMENT</div>
         </div>
 
         <section id="overviewPanel" class="panel active">
             <div class="cards">
-                <div class="card" style="border-top-color: var(--neo-blue)"><div class="card-name">Total Logs</div><div class="card-value" id="statTotal">0</div></div>
-                <div class="card" style="border-top-color: var(--neo-green)"><div class="card-name">FPY (一次通过率)</div><div class="card-value" id="statFpy" style="color:var(--neo-green)">0%</div></div>
-                <div class="card"><div class="card-name">Retest Rate</div><div class="card-value" style="color:var(--neo-yellow)">0%</div></div>
-                <div class="card"><div class="card-name">PASS</div><div class="card-value" style="color:var(--neo-green)" id="statPass">0</div></div>
-                <div class="card"><div class="card-name">FAIL</div><div class="card-value" style="color:var(--neo-red)" id="statFail">0</div></div>
-                <div class="card"><div class="card-name">Interrupt</div><div class="card-value" style="color:var(--neo-blue)" id="statInterrupt">0</div></div>
+                <div class="card glass-panel neon-cyan"><div class="card-name">Total Logs</div><div class="card-value" id="statTotal">0</div></div>
+                <div class="card glass-panel neon-green"><div class="card-name">FPY (一次通过率)</div><div class="card-value" id="statFpy" style="color:var(--astro-green)">0%</div></div>
+                <div class="card glass-panel neon-yellow"><div class="card-name">Retest Rate</div><div class="card-value" style="color:var(--astro-yellow)">0%</div></div>
+                <div class="card glass-panel neon-green"><div class="card-name">Pass</div><div class="card-value" style="color:var(--astro-green)" id="statPass">0</div></div>
+                <div class="card glass-panel neon-red"><div class="card-name">Fail</div><div class="card-value" style="color:var(--astro-red)" id="statFail">0</div></div>
+                <div class="card glass-panel neon-blue"><div class="card-name">中断</div><div class="card-value" style="color:var(--astro-blue)" id="statInterrupt">0</div></div>
             </div>
 
             <div class="grid-2">
-                <div class="box">
-                    <div class="box-title">TOP FAIL PARETO</div>
+                <div class="box glass-panel">
+                    <div class="box-title">TOP FAIL PARETO (柏拉图分析)</div>
                     <div id="paretoChart" class="chart-container"></div>
                 </div>
-                <div class="box">
-                    <div class="box-title">CPK DRIFT WARNING (Cpk < 1.33)</div>
+                <div class="box glass-panel">
+                    <div class="box-title">PROCESS DRIFT / CPK 漂移预警</div>
                     <div id="cpkChart" class="chart-container"></div>
                 </div>
             </div>
 
-            <div class="box" style="flex:1;">
-                <div class="box-title">REALTIME TEST PIPELINE</div>
+            <div class="box glass-panel" style="flex:1; padding-bottom: 0; overflow:hidden;">
+                <div class="box-title" style="margin-bottom: 16px;">REALTIME PIPELINE / 实时测试流</div>
                 <div class="table-scroll">
                     <table>
-                        <thead><tr><th>#</th><th>Serial Number</th><th>Model</th><th>Result</th><th>Top Issue</th><th>Timestamp</th></tr></thead>
-                        <tbody id="recentBody"><tr><td colspan="6" style="text-align:center; padding: 30px;">Waiting for telemetry...</td></tr></tbody>
+                        <thead><tr><th>No.</th><th>SN / 序列号</th><th>Model</th><th>Result</th><th>Top Issue</th><th>Timestamp</th></tr></thead>
+                        <tbody id="recentBody"><tr><td colspan="6" style="text-align:center; padding: 60px; color: var(--text-muted); font-family: var(--font-num);">WAITING FOR TELEMETRY...</td></tr></tbody>
                     </table>
                 </div>
             </div>
         </section>
 
         <section id="failCenterPanel" class="panel">
-            <div class="box" style="margin-bottom: 20px; flex-shrink: 0;">
-                <div class="box-title">FAULT ISOLATION QUERY</div>
-                <div class="search-row">
-                    <input id="snInput" placeholder="> Input SN or Machine ID..." oninput="filterFailCenter()">
-                    <button>EXECUTE</button>
+            <div class="box glass-panel" style="margin-bottom: 24px; flex-shrink: 0;">
+                <div class="box-title" style="margin-bottom: 16px;">FAULT ISOLATION QUERY / 故障隔离检索</div>
+                <div class="search-row" style="margin-bottom: 0;">
+                    <input id="snInput" placeholder="输入 SN 或 机台编号进行溯源..." oninput="filterFailCenter()">
+                    <button>EXECUTE / 执行</button>
                 </div>
             </div>
-            <div class="box" style="flex:1;">
+            <div class="box glass-panel" style="flex:1; padding-bottom:0; overflow:hidden;">
                 <div class="table-scroll">
                     <table>
-                        <thead><tr><th>Serial Number</th><th>Station</th><th>Result</th><th>Intercept Point</th><th>Timestamp</th></tr></thead>
-                        <tbody id="failCenterBody"><tr><td colspan="5" style="text-align:center; padding: 30px;">No fail data</td></tr></tbody>
+                        <thead><tr><th>SN / 序列号</th><th>Station</th><th>Result</th><th>Intercept Point</th><th>Timestamp</th></tr></thead>
+                        <tbody id="failCenterBody"><tr><td colspan="5" style="text-align:center; padding: 60px; color: var(--text-muted); font-family: var(--font-num);">NO ANOMALIES DETECTED</td></tr></tbody>
                     </table>
                 </div>
             </div>
         </section>
 
         <section id="spcPanel" class="panel">
-            <div class="box" style="flex:1; display:flex; flex-direction:column; overflow:hidden;">
-                <div class="box-title">STATISTICAL PROCESS CONTROL (SPC)</div>
+            <div class="box glass-panel" style="flex:1; display:flex; flex-direction:column; overflow:hidden;">
+                <div class="box-title" style="margin-bottom: 16px;">STATISTICAL PROCESS CONTROL / SPC 过程控制</div>
                 <div class="search-row" style="flex-shrink:0;">
-                    <input type="text" id="spcSearchInput" placeholder="> Filter metrics by exact name (e.g., Voltage)..." oninput="filterSpcMatrix()">
+                    <input type="text" id="spcSearchInput" placeholder="输入参数名称进行矩阵过滤 (如 Voltage)..." oninput="filterSpcMatrix()">
                 </div>
-                <div id="spcGrid" class="spc-dynamic-grid table-scroll" style="padding: 16px; border:none;">
-                    <div style="color:var(--text-muted); text-align:center; grid-column: span 2; padding: 40px; font-family: var(--font-mono);">
+                <div id="spcGrid" class="spc-dynamic-grid table-scroll" style="padding-right: 8px;">
+                    <div style="color:var(--text-muted); text-align:center; grid-column: span 2; padding: 80px; font-family: var(--font-num); font-size: 16px; letter-spacing: 2px;">
                         EXTRACTING MATRIX DATA...
                     </div>
                 </div>
@@ -306,10 +328,8 @@
         </section>
 
         <section id="machinePanel" class="panel">
-            <div class="box" style="flex:1; background: transparent; border: none; padding: 0;">
-                <div id="machineGrid" class="machine-grid">
-                    <div style="color:var(--text-muted); font-family: var(--font-mono);">Waiting for agent heartbeat...</div>
-                </div>
+            <div id="machineGrid" class="machine-grid">
+                <div style="color:var(--text-muted); padding: 20px; font-family: var(--font-num);">WAITING FOR FLEET HEARTBEAT...</div>
             </div>
         </section>
     </main>
@@ -321,16 +341,16 @@ let __SPC_MATRIX_CACHE__ = [];
 let paretoChart, cpkChart;
 let spcCharts = [];
 
-// [性能优化]: ECharts 全局默认项提权配置
-const echartsCommonOpts = {
-    backgroundColor: 'transparent',
-    textStyle: { fontFamily: 'Consolas, monospace' }
+// [视觉配置]: 适配 SpaceX 深空荧光风格
+const chartOptions = {
+    colorText: '#8b949e',
+    colorLine: 'rgba(255,255,255,0.08)',
+    fontFamily: '"DIN Alternate", "Consolas", monospace'
 };
 
 function initCharts() {
-    // 强制使用 Canvas 渲染器，兼容性最好且在大量 2D 散点下比 WebGL 稳定
-    paretoChart = echarts.init(document.getElementById('paretoChart'), 'dark', { renderer: 'canvas' });
-    cpkChart = echarts.init(document.getElementById('cpkChart'), 'dark', { renderer: 'canvas' });
+    paretoChart = echarts.init(document.getElementById('paretoChart'), null, { renderer: 'canvas' });
+    cpkChart = echarts.init(document.getElementById('cpkChart'), null, { renderer: 'canvas' });
 }
 
 function switchPanel(panelId, el) {
@@ -339,7 +359,7 @@ function switchPanel(panelId, el) {
     document.getElementById(panelId).classList.add("active");
     el.classList.add("active");
     
-    document.getElementById("pageTitle").innerText = el.innerText;
+    document.getElementById("pageTitle").innerText = el.innerText.substring(4); // 剔除 [01] 标号
     
     const subs = {
         'overviewPanel': 'SYS.MAIN_DASHBOARD // PRODUCTION ENVIRONMENT',
@@ -370,22 +390,20 @@ function normalizeResult(result) {
     const text = String(result || "").toUpperCase();
     if (text.includes("PASS") || text.includes("OK")) return "PASS";
     if (text.includes("FAIL") || text.includes("NG")) return "FAIL";
-    return "中断";
+    return "中断"; // 严格遵照 Rule 4 三态规则
 }
 
 function resultPill(res) {
     const r = normalizeResult(res);
     if (r === "PASS") return `<span class="pill pill-pass">PASS</span>`;
     if (r === "FAIL") return `<span class="pill pill-fail">FAIL</span>`;
-    return `<span class="pill pill-interrupt">ABORT</span>`;
+    return `<span class="pill pill-interrupt">中断</span>`;
 }
 
 async function loadDashboardData() {
     try {
         const [statsRes, recentRes, insightsRes] = await Promise.all([
-            fetch("/api/stats"), 
-            fetch("/api/recent?limit=100"),
-            fetch("/api/engineering_insights")
+            fetch("/api/stats"), fetch("/api/recent?limit=100"), fetch("/api/engineering_insights")
         ]);
         const stats = await statsRes.json();
         const recent = await recentRes.json();
@@ -401,40 +419,38 @@ async function loadDashboardData() {
 
         document.getElementById("recentBody").innerHTML = recent.map((r, i) => `
             <tr onclick="openModal(${i})">
-                <td class="mono">${String(i+1).padStart(3, '0')}</td>
-                <td class="mono">${r.sn || "-"}</td>
+                <td class="mono" style="color:var(--text-muted)">${String(i+1).padStart(3, '0')}</td>
+                <td class="mono" style="color:var(--astro-cyan)">${r.sn || "-"}</td>
                 <td>${r.model || "-"}</td>
                 <td>${resultPill(r.business_result)}</td>
-                <td style="max-width:200px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                <td style="max-width:200px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:#fff;">
                     ${r.fail_items && r.fail_items.length > 0 ? r.fail_items[0].name : "-"}
                 </td>
-                <td class="mono">${r.time || "-"}</td>
+                <td class="mono" style="color:var(--text-muted); font-size:12px;">${r.time || "-"}</td>
             </tr>
         `).join("");
 
         const topFails = stats.top_fail || [];
         paretoChart.setOption({
             backgroundColor: 'transparent',
-            tooltip: { trigger: 'axis', backgroundColor: '#0d1219', borderColor: '#1c2838', textStyle: {color: '#e2e8f0'} },
-            grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
-            xAxis: { type: 'category', data: topFails.map(item => item.item.substring(0,10)), axisLabel: {color: '#64748b', fontSize: 10} },
-            yAxis: { type: 'value', splitLine: { lineStyle: { color: '#1c2838' } } },
-            series: [{ data: topFails.map(item => item.count), type: 'bar', itemStyle: { color: '#f43f5e', borderRadius: [2,2,0,0] } }]
+            tooltip: { trigger: 'axis', backgroundColor: 'rgba(0,0,0,0.8)', borderColor: 'var(--glass-border)', textStyle: {color: '#fff', fontFamily: chartOptions.fontFamily} },
+            grid: { left: '0%', right: '4%', bottom: '0%', top: '10%', containLabel: true },
+            xAxis: { type: 'category', data: topFails.map(item => item.item.substring(0,10)), axisLabel: {color: chartOptions.colorText, fontSize: 11, fontFamily: chartOptions.fontFamily}, axisLine: {show:false}, axisTick: {show:false} },
+            yAxis: { type: 'value', splitLine: { lineStyle: { color: chartOptions.colorLine, type: 'dashed' } }, axisLabel: {color: chartOptions.colorText, fontFamily: chartOptions.fontFamily} },
+            series: [{ data: topFails.map(item => item.count), type: 'bar', barWidth: '35%', itemStyle: { color: 'var(--astro-red)', shadowColor: 'rgba(255, 0, 60, 0.5)', shadowBlur: 10, borderRadius: [4,4,0,0] } }]
         });
 
-        // 真实挂载后端的 CPK 预警数据
         const cpkWarnings = insights.cpk_warnings || [];
         cpkChart.setOption({
             backgroundColor: 'transparent',
-            tooltip: { trigger: 'axis', backgroundColor: '#0d1219', borderColor: '#1c2838', textStyle: {color: '#e2e8f0'}, formatter: '{b}: Cpk {c}' },
-            grid: { left: '3%', right: '10%', bottom: '3%', containLabel: true },
-            xAxis: { type: 'value', splitLine: { lineStyle: { color: '#1c2838' } } },
-            yAxis: { type: 'category', data: cpkWarnings.map(w => w.item.substring(0,15)), axisLabel: {color: '#64748b', fontSize: 10} },
+            tooltip: { trigger: 'axis', backgroundColor: 'rgba(0,0,0,0.8)', borderColor: 'var(--glass-border)', textStyle: {color: '#fff', fontFamily: chartOptions.fontFamily}, formatter: '{b}: Cpk {c}' },
+            grid: { left: '0%', right: '15%', bottom: '0%', top: '10%', containLabel: true },
+            xAxis: { type: 'value', splitLine: { lineStyle: { color: chartOptions.colorLine, type: 'dashed' } }, axisLabel: {color: chartOptions.colorText, fontFamily: chartOptions.fontFamily} },
+            yAxis: { type: 'category', data: cpkWarnings.map(w => w.item.substring(0,15)), axisLabel: {color: chartOptions.colorText, fontSize: 11, fontFamily: chartOptions.fontFamily}, axisLine: {show:false}, axisTick: {show:false} },
             series: [{ 
-                data: cpkWarnings.map(w => w.cpk), 
-                type: 'bar', 
-                label: {show: true, position: 'right', color: '#fff', fontSize: 10}, 
-                itemStyle: { color: '#f59e0b', borderRadius: [0,2,2,0] } 
+                data: cpkWarnings.map(w => w.cpk), type: 'bar', barWidth: '40%',
+                label: {show: true, position: 'right', color: '#fff', fontSize: 12, fontFamily: chartOptions.fontFamily, formatter: '{c}'}, 
+                itemStyle: { color: 'var(--astro-yellow)', shadowColor: 'rgba(255, 190, 11, 0.5)', shadowBlur: 10, borderRadius: [0,4,4,0] } 
             }]
         });
 
@@ -445,14 +461,12 @@ async function loadAnalysis() {
     try {
         const resp = await fetch("/api/analysis");
         const data = await resp.json();
-
         const matrix = data.spc_matrix || [];
         __SPC_MATRIX_CACHE__ = matrix;
 
         const grid = document.getElementById("spcGrid");
-        
         if (matrix.length === 0) {
-            grid.innerHTML = '<div style="color:var(--text-muted); grid-column: span 2; text-align:center;">No numeric parameters available.</div>';
+            grid.innerHTML = '<div style="color:var(--text-muted); grid-column: span 2; text-align:center; padding: 60px; font-family: var(--font-num);">NO METRICS AVAILABLE.</div>';
             return;
         }
 
@@ -472,29 +486,23 @@ async function loadAnalysis() {
             matrix.forEach((m, idx) => {
                 const dom = document.getElementById(`spc${idx}`);
                 if (!dom) return;
-                const chart = echarts.init(dom, 'dark', { renderer: 'canvas' });
-                
-                // [性能优化]: 取消悬停动画，采用 basic 渲染策略，大幅降低 GPU 压力
+                const chart = echarts.init(dom, null, { renderer: 'canvas' });
                 const option = {
-                    backgroundColor: 'transparent',
-                    animation: false, 
-                    title: { text: m.name, textStyle: { fontSize: 12, color: '#e2e8f0', fontFamily: 'Consolas' }, left: 'center', top: 5 },
-                    tooltip: { trigger: 'axis', backgroundColor: '#0d1219', borderColor: '#1c2838', padding: 8, formatter: (params) => `SN: ${m.points[params[0].dataIndex].sn}<br>Val: ${params[0].value} ${m.unit || ''}` },
-                    grid: { left: '12%', right: '8%', bottom: '15%', top: '22%' },
-                    xAxis: { type: 'category', data: m.points.map(p => p.time), axisLabel: { fontSize: 9, color: '#64748b' }, axisLine: {lineStyle: {color: '#1c2838'}} },
-                    yAxis: { type: 'value', scale: true, axisLabel: { fontSize: 9, color: '#64748b' }, splitLine: { lineStyle: { color: '#1c2838', type: 'dashed' } } },
+                    backgroundColor: 'transparent', animation: false, 
+                    title: { text: m.name, textStyle: { fontSize: 14, color: '#fff', fontWeight: 700, fontFamily: 'Inter, sans-serif', letterSpacing: 1 }, left: '3%', top: 5 },
+                    tooltip: { trigger: 'axis', backgroundColor: 'rgba(0,0,0,0.8)', borderColor: 'var(--glass-border)', padding: 12, textStyle:{color:'#fff', fontFamily: chartOptions.fontFamily}, formatter: (params) => `<span style="color:var(--astro-cyan); font-size:12px;">${m.points[params[0].dataIndex].sn}</span><br><b style="font-size:16px">${params[0].value}</b> <span style="font-size:11px; color:var(--text-muted)">${m.unit || ''}</span>` },
+                    grid: { left: '12%', right: '10%', bottom: '15%', top: '25%' },
+                    xAxis: { type: 'category', data: m.points.map(p => p.time), axisLabel: { fontSize: 10, color: chartOptions.colorText, fontFamily: chartOptions.fontFamily }, axisLine: {show:false}, axisTick: {show:false} },
+                    yAxis: { type: 'value', scale: true, axisLabel: { fontSize: 11, color: chartOptions.colorText, fontFamily: chartOptions.fontFamily }, splitLine: { lineStyle: { color: chartOptions.colorLine, type:'dashed' } } },
                     series: [
                         {
-                            data: m.points.map(p => p.val),
-                            type: 'scatter',
-                            symbolSize: 4,
-                            hoverAnimation: false, // 禁用悬停放大，挽救帧率
-                            itemStyle: { color: '#3b82f6', opacity: 0.8 },
+                            data: m.points.map(p => p.val), type: 'scatter', symbolSize: 6, hoverAnimation: false, 
+                            itemStyle: { color: 'var(--astro-cyan)', opacity: 0.9, shadowColor: 'var(--astro-cyan)', shadowBlur: 5 },
                             markLine: {
-                                silent: true, symbol: 'none', label: { position: 'end', fontSize: 9, color: '#f43f5e' },
+                                silent: true, symbol: 'none', label: { position: 'end', fontSize: 11, color: 'var(--astro-red)', fontFamily: chartOptions.fontFamily },
                                 data: [
-                                    m.hilim ? { yAxis: m.hilim, lineStyle: { color: '#f43f5e', type: 'solid', width: 1 }, label: { formatter: 'USL' } } : null,
-                                    m.lolim ? { yAxis: m.lolim, lineStyle: { color: '#f43f5e', type: 'solid', width: 1 }, label: { formatter: 'LSL' } } : null
+                                    m.hilim ? { yAxis: m.hilim, lineStyle: { color: 'var(--astro-red)', type: 'solid', width: 1.5 }, label: { formatter: 'USL' } } : null,
+                                    m.lolim ? { yAxis: m.lolim, lineStyle: { color: 'var(--astro-red)', type: 'solid', width: 1.5 }, label: { formatter: 'LSL' } } : null
                                 ].filter(Boolean)
                             }
                         }
@@ -526,32 +534,24 @@ function filterSpcMatrix() {
 function renderFailCenter(filterText = "") {
     const tbody = document.getElementById("failCenterBody");
     const fails = __RECENT_RECORD_CACHE__.filter(r => normalizeResult(r.business_result) !== "PASS");
-    
-    const filtered = fails.filter(r => {
-        const text = (r.sn + " " + r.station).toUpperCase();
-        return text.includes(filterText.toUpperCase());
-    });
+    const filtered = fails.filter(r => (r.sn + " " + r.station).toUpperCase().includes(filterText.toUpperCase()));
 
     tbody.innerHTML = filtered.map((r, i) => `
         <tr onclick="openModal(-1, '${r.sn}')">
-            <td class="mono">${r.sn || "-"}</td>
+            <td class="mono" style="color:var(--astro-cyan)">${r.sn || "-"}</td>
             <td>${r.station || "-"}</td>
             <td>${resultPill(r.business_result)}</td>
-            <td>${r.fail_items && r.fail_items.length > 0 ? r.fail_items[0].name : "-"}</td>
-            <td class="mono">${r.time || "-"}</td>
+            <td style="color:#fff;">${r.fail_items && r.fail_items.length > 0 ? r.fail_items[0].name : "-"}</td>
+            <td class="mono" style="color:var(--text-muted); font-size:12px;">${r.time || "-"}</td>
         </tr>
     `).join("");
 }
 
-function filterFailCenter() {
-    renderFailCenter(document.getElementById('snInput').value);
-}
+function filterFailCenter() { renderFailCenter(document.getElementById('snInput').value); }
 
 function openModal(index, searchSn = null) {
     let record = __RECENT_RECORD_CACHE__[index];
-    if(searchSn) {
-        record = __RECENT_RECORD_CACHE__.find(r => r.sn === searchSn);
-    }
+    if(searchSn) record = __RECENT_RECORD_CACHE__.find(r => r.sn === searchSn);
     if(!record) return;
 
     const passCnt = record.passed_tests || 0;
@@ -567,11 +567,10 @@ function openModal(index, searchSn = null) {
             const n = (item.name || item.raw_name || "").toUpperCase();
             return n.includes("GET UNIT INFO") || n.includes("GET_UNIT_INFO");
         });
-
         if(isOnlyGetUnitInfo) {
-            aiAdviceHtml = `<div class="ai-advice-box advice-warn"><b>[WARN] PROCESS INTERCEPT</b><br>MES rejection detected. Verify barcode scanner integrity or routing rules in MES.</div>`;
+            aiAdviceHtml = `<div class="ai-advice-box advice-warn"><b>[工艺拦截警报]</b> 检测到 MES 路由驳回。请检查条码枪扫描状态或 MES 工单挂载逻辑。</div>`;
         } else {
-            aiAdviceHtml = `<div class="ai-advice-box"><b>[CRITICAL] HARDWARE FAULT</b><br>Physical testing anomaly detected. Immediate TE intervention required to inspect fixture probes or instrument connectivity.</div>`;
+            aiAdviceHtml = `<div class="ai-advice-box"><b>[硬件失效警报]</b> 检测到物理测试项异常。请 TE 工程师立即介入排查治具探针磨损或仪器线缆连接状态。</div>`;
         }
     }
 
@@ -579,46 +578,43 @@ function openModal(index, searchSn = null) {
     modal.className = "modal-mask";
     modal.id = "diagModal";
     modal.innerHTML = `
-        <div class="modal-window">
+        <div class="modal-window glass-panel" style="background: rgba(10, 14, 20, 0.85);">
             <div class="modal-header">
-                <div style="font-size:16px; font-weight:800; font-family:var(--font-mono); color:#fff;">SYS.DIAG // TARGET: ${record.sn}</div>
-                <button onclick="document.getElementById('diagModal').remove()" class="modal-close">×</button>
+                <div style="font-size:20px; font-weight:800; color:#fff; letter-spacing:1px; text-transform:uppercase;">
+                    DIAGNOSTIC TARGET // <span style="font-family:var(--font-num); font-size:22px; color:var(--astro-cyan); margin-left:8px; text-shadow: 0 0 10px rgba(0, 242, 254, 0.5);">${record.sn}</span>
+                </div>
+                <button onclick="document.getElementById('diagModal').remove()" class="modal-close">
+                    <svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
             </div>
             <div class="modal-body">
                 ${aiAdviceHtml}
                 <div class="quadrant-grid">
                     <div class="quadrant-box">Total Steps <b style="color:#fff">${totalCnt}</b></div>
-                    <div class="quadrant-box">Pass <b style="color:var(--neo-green)">${passCnt}</b></div>
-                    <div class="quadrant-box">Fail <b style="color:var(--neo-red)">${failCnt}</b></div>
-                    <div class="quadrant-box">Abort <b style="color:var(--neo-blue)">${intCnt}</b></div>
+                    <div class="quadrant-box">Pass <b style="color:var(--astro-green); text-shadow: 0 0 15px rgba(0, 255, 157, 0.4);">${passCnt}</b></div>
+                    <div class="quadrant-box">Fail <b style="color:var(--astro-red); text-shadow: 0 0 15px rgba(255, 0, 60, 0.4);">${failCnt}</b></div>
+                    <div class="quadrant-box">Abort <b style="color:var(--astro-blue); text-shadow: 0 0 15px rgba(58, 134, 255, 0.4);">${intCnt}</b></div>
                 </div>
                 
-                <div style="display:flex; justify-content:space-between; align-items:center; margin: 24px 0 12px;">
-                    <div style="color:var(--text-muted); font-weight:700; font-size:11px;">RAW MEASUREMENT TRACE (COUNT: ${rawItems.length})</div>
-                    <input type="text" id="modalSearch" placeholder="> Filter metrics..." 
-                           style="width:240px; padding:8px 12px; font-size:12px; background: #090e14;" 
-                           oninput="filterModalItems()">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin: 40px 0 20px;">
+                    <div style="color:var(--astro-cyan); font-weight:700; font-size:14px; letter-spacing:1px; text-transform:uppercase;">RAW MEASUREMENT TRACE / 底层测量日志</div>
+                    <input type="text" id="modalSearch" placeholder="过滤测项名称..." style="width:260px; padding:12px 20px; background:rgba(0,0,0,0.5);" oninput="filterModalItems()">
                 </div>
                 
-                <div class="table-scroll" style="max-height:400px; background: #090e14;">
+                <div class="table-scroll" style="max-height:420px; background: rgba(0,0,0,0.3); border-radius: 8px; border: 1px solid var(--glass-border);">
                     <table>
-                        <thead>
-                            <tr>
-                                <th style="width:60px">#</th>
-                                <th style="width:90px">State</th>
-                                <th>Metric / Channel</th>
-                                <th>Value</th>
-                                <th>Limits (LSL - USL)</th>
-                            </tr>
-                        </thead>
+                        <thead><tr><th style="width:70px">No.</th><th style="width:120px">State</th><th>Metric</th><th>Value</th><th>Limits</th></tr></thead>
                         <tbody id="modalTableBody">
                             ${rawItems.map((item, idx) => `
                                 <tr class="raw-item-row">
                                     <td class="mono" style="color:var(--text-muted)">${String(idx + 1).padStart(3,'0')}</td>
-                                    <td><span style="font-weight:800; font-size:11px; font-family:var(--font-mono); color: ${item.status === 'PASS' ? 'var(--neo-green)' : (item.status === 'FAIL' ? 'var(--neo-red)' : 'var(--neo-blue)')}">${item.status || '-'}</span></td>
-                                    <td class="item-name mono" style="color:#e2e8f0">${item.name || item.raw_name || '-'}</td>
-                                    <td class="item-value mono" style="color: ${item.status === 'FAIL' ? 'var(--neo-red)' : '#3b82f6'}; font-weight: ${item.status === 'FAIL' ? '800' : '400'}">${item.value || '-'} <span style="font-size:10px; color:#64748b">${item.unit || ''}</span></td>
-                                    <td class="mono" style="color:#64748b">${item.lolim !== undefined ? item.lolim : '-'} ~ ${item.hilim !== undefined ? item.hilim : '-'}</td>
+                                    <td><span style="font-weight:800; font-family:var(--font-num); font-size:13px; color: ${item.status === 'PASS' ? 'var(--astro-green)' : (item.status === 'FAIL' ? 'var(--astro-red)' : 'var(--astro-blue)')}">${item.status || '-'}</span></td>
+                                    <td class="item-name mono" style="color:#fff; font-size:14px;">${item.name || item.raw_name || '-'}</td>
+                                    <td class="item-value mono" style="color: ${item.status === 'FAIL' ? 'var(--astro-red)' : 'var(--astro-cyan)'}; font-size:16px;">${item.value || '-'} <span style="font-size:11px; color:var(--text-muted)">${item.unit || ''}</span></td>
+                                    <td class="mono" style="color:var(--text-muted); font-size:13px;">${item.lolim !== undefined ? item.lolim : '-'} ~ ${item.hilim !== undefined ? item.hilim : '-'}</td>
                                 </tr>
                             `).join('')}
                         </tbody>
@@ -632,11 +628,8 @@ function openModal(index, searchSn = null) {
 
 function filterModalItems() {
     const q = document.getElementById('modalSearch').value.toUpperCase();
-    const rows = document.querySelectorAll('.raw-item-row');
-    rows.forEach(row => {
-        const nameText = (row.querySelector('.item-name')?.innerText || '').toUpperCase();
-        const valueText = (row.querySelector('.item-value')?.innerText || '').toUpperCase();
-        row.style.display = (nameText.includes(q) || valueText.includes(q)) ? '' : 'none';
+    document.querySelectorAll('.raw-item-row').forEach(row => {
+        row.style.display = (row.querySelector('.item-name')?.innerText.toUpperCase().includes(q) || row.querySelector('.item-value')?.innerText.toUpperCase().includes(q)) ? '' : 'none';
     });
 }
 
@@ -645,18 +638,18 @@ async function loadMachines() {
         const res = await fetch("/api/telemetry/latest");
         const data = await res.json();
         const grid = document.getElementById("machineGrid");
-        if(data.machines.length === 0) {
-            grid.innerHTML = `<div style="color:var(--text-muted); font-family:var(--font-mono)">> NO ACTIVE NODES DETECTED.</div>`;
-            return;
-        }
+        if(data.machines.length === 0) return grid.innerHTML = `<div style="color:var(--text-muted); padding:20px; font-family:var(--font-num);">NO ACTIVE NODES DETECTED.</div>`;
+        
         grid.innerHTML = data.machines.map(m => `
-            <div class="machine-card" style="border-top-color: ${m.online_status==='ONLINE'?'var(--neo-green)':'var(--neo-red)'}">
-                <div style="font-size:15px; font-weight:800; font-family:var(--font-mono); margin-bottom:12px; color:#fff;">[ ${m.machine_id} ]</div>
-                <div class="machine-line"><span>LINK STATE</span><b style="color:${m.online_status==='ONLINE'?'var(--neo-green)':'var(--neo-red)'}">${m.online_status}</b></div>
-                <div class="machine-line"><span>DUT SN</span><b style="color:var(--neo-blue)">${m.current_sn || 'N/A'}</b></div>
+            <div class="machine-card glass-panel" style="border-top: 4px solid ${m.online_status==='ONLINE'?'var(--astro-green)':'var(--astro-red)'}">
+                <div style="font-size:22px; font-weight:800; font-family:var(--font-num); margin-bottom:20px; color:#fff; display:flex; justify-content:space-between; align-items:center;">
+                    [ ${m.machine_id} ]
+                    <div style="width:12px; height:12px; border-radius:50%; background:${m.online_status==='ONLINE'?'var(--astro-green)':'var(--astro-red)'}; box-shadow: 0 0 10px ${m.online_status==='ONLINE'?'var(--astro-green)':'var(--astro-red)'};"></div>
+                </div>
+                <div class="machine-line"><span>DUT SN</span><b style="color:var(--astro-cyan)">${m.current_sn || 'N/A'}</b></div>
                 <div class="machine-line"><span>VIN VOLTAGE</span><b>${m.measurements.vin_voltage || '0.00'} V</b></div>
                 <div class="machine-line"><span>VIN CURRENT</span><b>${m.measurements.vin_current || '0.00'} A</b></div>
-                <div class="machine-line"><span>ACTIVE ALARMS</span><b style="color:${m.alarm_count > 0 ? 'var(--neo-red)' : 'var(--neo-green)'}">${m.alarm_count}</b></div>
+                <div class="machine-line"><span>ACTIVE ALARMS</span><b style="color:${m.alarm_count > 0 ? 'var(--astro-red)' : 'var(--astro-green)'}; text-shadow: 0 0 10px ${m.alarm_count > 0 ? 'var(--astro-red)' : 'transparent'};">${m.alarm_count}</b></div>
             </div>
         `).join("");
     } catch(e){}
