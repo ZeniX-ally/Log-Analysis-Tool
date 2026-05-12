@@ -5,7 +5,8 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 
-def parse_dt(text: str) -> Optionalif not text:
+def parse_dt(text: str) -> Optional[datetime]:
+    if not text:
         return None
 
     raw = str(text).strip()

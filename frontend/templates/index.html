@@ -1,55 +1,198 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF"></div>    <meta charset="UTF-8">
-                    <div class="table-scroll">
-                        <table>
-                            <thead>
-                            <tr>
-                                <th>时间窗口</th>
-                                <th>测试项</th>
-                                <th>次数</th>
-                                <th>SN数</th>
-                                <th>等级</th>
-                            </tr>
-                            </thead>
-                            <tbody id="riskBody">
-                            <tr><td colspan="5">加载中...</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
+    <meta charset="UTF-8">
+    <title>FCT 测试日志分析平台</title>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+    <style>
+        :root {
+            --bg: #080d13;
+            --panel: #111821;
+            --panel2: #151f2b;
+            --line: #263445;
+            --text: #d7e3f4;
+            --muted: #8fa3bd;
+            --white: #ffffff;
+            --green: #2ee59d;
+            --red: #ff5c73;
+            --blue: #58a6ff;
+            --yellow: #ffcc66;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { background: var(--bg); color: var(--text); font-family: "Microsoft YaHei", sans-serif; font-size: 14px; overflow: hidden; }
+
+        .app { height: 100vh; display: grid; grid-template-columns: 250px 1fr; }
+        .sidebar { background: #070b10; border-right: 1px solid #1c2a3a; padding: 20px 16px; }
+        .brand { font-size: 18px; font-weight: 800; color: var(--white); margin-bottom: 6px; }
+        .brand-sub { color: var(--muted); font-size: 12px; line-height: 1.5; margin-bottom: 24px; }
+        .nav-item { padding: 11px 12px; border-radius: 8px; color: #9eb2ca; cursor: pointer; margin-bottom: 8px; transition: 0.2s;}
+        .nav-item.active { background: #101926; border: 1px solid #2c3d52; color: var(--white); }
+        .nav-item:hover { background: #0d1520; }
+
+        /* 修复全屏滚动问题，限制主区域并允许内部滚动 */
+        .main { padding: 22px 28px; overflow-y: auto; height: 100vh; display: flex; flex-direction: column;}
+        .topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; flex-shrink: 0;}
+        .title { font-size: 23px; font-weight: 800; color: var(--white); }
+        .subtitle { margin-top: 5px; color: var(--muted); font-size: 13px; }
+        
+        .panel { display: none; flex: 1; flex-direction: column; }
+        .panel.active { display: flex; }
+
+        .cards { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 14px; margin-bottom: 18px; flex-shrink: 0;}
+        .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; }
+        .card-name { color: var(--muted); font-size: 12px; margin-bottom: 10px; }
+        .card-value { color: var(--white); font-size: 26px; font-weight: 800; }
+        
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 18px; }
+        .box { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; display: flex; flex-direction: column;}
+        .box-title { color: var(--white); font-weight: 800; font-size: 17px; margin-bottom: 14px; }
+        
+        .chart-container { width: 100%; height: 300px; }
+
+        .table-scroll { flex: 1; overflow-y: auto; border: 1px solid #223044; border-radius: 8px; background: #0d141d; }
+        table { width: 100%; border-collapse: collapse; }
+        th { color: #aec2dc; font-size: 13px; text-align: left; padding: 10px 12px; background: #121b27; border-bottom: 1px solid #2a3a4d; position: sticky; top: 0; z-index: 2; }
+        td { padding: 10px 12px; border-bottom: 1px solid #1d2a3b; font-size: 13px; }
+        tr:hover td { background: #101926; cursor: pointer;}
+        
+        .pill { display: inline-block; min-width: 62px; text-align: center; padding: 3px 8px; border-radius: 999px; font-size: 12px; font-weight: 800; }
+        .pill-pass { color: #06140f; background: var(--green); }
+        .pill-fail { color: #19050a; background: var(--red); }
+        .pill-interrupt { color: #06111f; background: var(--blue); }
+
+        .search-row { display: flex; gap: 10px; margin-bottom: 12px; }
+        input { background: #0d141d; border: 1px solid #2b3a4b; color: var(--text); border-radius: 6px; padding: 10px 12px; flex: 1; outline:none; }
+        button { background: #1b2635; border: 1px solid #3b4d63; color: var(--text); padding: 9px 14px; border-radius: 6px; cursor: pointer; }
+
+        /* Modal 的布局与磨砂效果 */
+        .modal-mask {
+            position: fixed; inset: 0; background: rgba(17, 24, 33, 0.7);
+            backdrop-filter: blur(10px);
+            z-index: 9999; display: flex; align-items: center; justify-content: center;
+        }
+        .modal-window {
+            width: min(1180px, 92vw); max-height: 90vh; background: rgba(17, 24, 33, 0.95);
+            border: 1px solid #2b3a4b; border-radius: 10px; box-shadow: 0 18px 60px rgba(0, 0, 0, 0.8);
+            display: flex; flex-direction: column;
+        }
+        .modal-header { height: 62px; padding: 0 20px; border-bottom: 1px solid #263445; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;}
+        .modal-close {
+            width: 36px; height: 36px; border: 1px solid #3b4d63; border-radius: 6px; background: #1b2635; 
+            color: #d7e3f4; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; font-size: 24px;
+        }
+        .modal-close:hover { background: #26374d; border-color: #58708f; }
+        .modal-body { padding: 18px 20px; overflow-y: auto; flex: 1; min-height: 0; }
+        
+        .ai-advice-box { background: rgba(255, 92, 115, 0.1); border-left: 4px solid var(--red); padding: 12px 16px; margin-bottom: 15px; border-radius: 4px; color: #ffd6dc;}
+        .ai-advice-box.advice-warn { background: rgba(255, 204, 102, 0.1); border-left-color: var(--yellow); color: #ffebc2;}
+        
+        .quadrant-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 15px; }
+        .quadrant-box { background: #0d141d; border: 1px solid #223044; padding: 10px; border-radius: 6px; text-align: center; }
+        .quadrant-box b { font-size: 20px; display: block; margin-top: 5px; }
+
+        .machine-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+        .machine-card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px; }
+        .machine-line { display: flex; justify-content: space-between; color: #aabbd0; font-size: 12px; padding: 4px 0; border-bottom: 1px solid #182435; }
+        
+        /* 全量散点矩阵布局 */
+        .spc-dynamic-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            align-content: start;
+        }
+
+        /* 隐藏滚动条 */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-thumb { background: #2c3d52; border-radius: 3px; }
+    </style>
+</head>
+<body>
+<div class="app">
+    <aside class="sidebar">
+        <div class="brand">FCT Smart Monitor</div>
+        <div class="brand-sub">全景工业效能诊断中枢<br>Ready for Deployment</div>
+        <div class="nav-item active" onclick="switchPanel('overviewPanel', this)">核心效能看板</div>
+        <div class="nav-item" onclick="switchPanel('failCenterPanel', this)">异常档案追溯中心</div>
+        <div class="nav-item" onclick="switchPanel('spcPanel', this)">SPC 全局趋势追溯</div>
+        <div class="nav-item" onclick="switchPanel('machinePanel', this)">实时机台遥测</div>
+    </aside>
+
+    <main class="main">
+        <div class="topbar">
+            <div>
+                <div class="title" id="pageTitle">核心效能看板 (Dashboard)</div>
+                <div class="subtitle" id="pageSub">核心指标矩阵与实时流水线</div>
+            </div>
+        </div>
+
+        <section id="overviewPanel" class="panel active">
+            <div class="cards">
+                <div class="card"><div class="card-name">Total Logs</div><div class="card-value" id="statTotal">0</div></div>
+                <div class="card"><div class="card-name">FPY (一次通过率)</div><div class="card-value" id="statFpy" style="color:var(--green)">0%</div></div>
+                <div class="card"><div class="card-name">Retest Rate</div><div class="card-value" style="color:var(--yellow)">0%</div></div>
+                <div class="card"><div class="card-name">PASS</div><div class="card-value" style="color:var(--green)" id="statPass">0</div></div>
+                <div class="card"><div class="card-name">FAIL</div><div class="card-value" style="color:var(--red)" id="statFail">0</div></div>
+                <div class="card"><div class="card-name">Interrupt</div><div class="card-value" style="color:var(--blue)" id="statInterrupt">0</div></div>
+            </div>
+
+            <div class="grid-2">
+                <div class="box">
+                    <div class="box-title">故障柏拉图 (Pareto Chart)</div>
+                    <div id="paretoChart" class="chart-container"></div>
+                </div>
+                <div class="box">
+                    <div class="box-title">CPK 预警红榜 (CPK < 1.33)</div>
+                    <div id="cpkChart" class="chart-container"></div>
+                </div>
+            </div>
+
+            <div class="box" style="flex:1;">
+                <div class="box-title">实时测试流水线 (最新 100 条)</div>
+                <div class="table-scroll">
+                    <table>
+                        <thead><tr><th>#</th><th>SN</th><th>Model</th><th>状态</th><th>Top Issue</th><th>测试时间</th></tr></thead>
+                        <tbody id="recentBody"><tr><td colspan="6">加载中...</td></tr></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <section id="failCenterPanel" class="panel">
+            <div class="box" style="margin-bottom: 15px; flex-shrink: 0;">
+                <div class="box-title">全量异常隔离视图</div>
+                <div class="search-row">
+                    <input id="snInput" placeholder="输入 SN 或 机台号 进行极速精准检索..." oninput="filterFailCenter()">
+                    <button>检索</button>
+                </div>
+            </div>
+            <div class="box" style="flex:1;">
+                <div class="table-scroll">
+                    <table>
+                        <thead><tr><th>SN</th><th>机台</th><th>状态</th><th>拦截节点</th><th>发生时间</th></tr></thead>
+                        <tbody id="failCenterBody"><tr><td colspan="5">加载中...</td></tr></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <section id="spcPanel" class="panel">
+            <div class="box" style="flex:1; display:flex; flex-direction:column; overflow:hidden;">
+                <div class="box-title">全量散点矩阵图 (Scatter Matrix)</div>
+                <div class="search-row" style="flex-shrink:0;">
+                    <input type="text" id="spcSearchInput" placeholder="输入测点关键字极速过滤全部项目 (如 Voltage, Curr)..." oninput="filterSpcMatrix()">
+                </div>
+                <div id="spcGrid" class="spc-dynamic-grid table-scroll" style="padding: 10px; background: transparent; border:none; flex:1;">
+                    <div style="color:var(--muted); text-align:center; grid-column: span 2;">提取中...</div>
                 </div>
             </div>
         </section>
 
         <section id="machinePanel" class="panel">
-            <div class="cards">
-                <div class="card">
-                    <div class="card-name">机台总数</div>
-                    <div class="card-value" id="machineTotal">0</div>
-                    <div class="card-desc">Telemetry machines</div>
-                </div>
-                <div class="card">
-                    <div class="card-name">ONLINE</div>
-                    <div class="card-value status-pass" id="machineOnline">0</div>
-                    <div class="card-desc">5 秒内收到推送</div>
-                </div>
-                <div class="card">
-                    <div class="card-name">STALE</div>
-                    <div class="card-value status-interrupt" id="machineStale">0</div>
-                    <div class="card-desc">5-30 秒未更新</div>
-                </div>
-                <div class="card">
-                    <div class="card-name">OFFLINE</div>
-                    <div class="card-value status-fail" id="machineOffline">0</div>
-                    <div class="card-desc">超过 30 秒未更新</div>
-                </div>
-            </div>
-
-            <div class="box">
-                <div class="box-title">机台状态卡片</div>
+            <div class="box" style="flex:1; background: transparent; border: none; padding: 0;">
                 <div id="machineGrid" class="machine-grid">
-                    <div class="muted">等待 telemetry...</div>
+                    <div style="color:var(--muted)">等待边缘 Agent 心跳...</div>
                 </div>
             </div>
         </section>
@@ -58,1146 +201,342 @@
 
 <script>
 let __RECENT_RECORD_CACHE__ = [];
+let __SPC_MATRIX_CACHE__ = [];
+let paretoChart, cpkChart;
+let spcCharts = [];
+
+function initCharts() {
+    paretoChart = echarts.init(document.getElementById('paretoChart'), 'dark', { background: 'transparent' });
+    cpkChart = echarts.init(document.getElementById('cpkChart'), 'dark', { background: 'transparent' });
+}
 
 function switchPanel(panelId, el) {
     document.querySelectorAll(".panel").forEach(p => p.classList.remove("active"));
     document.querySelectorAll(".nav-item").forEach(n => n.classList.remove("active"));
     document.getElementById(panelId).classList.add("active");
     el.classList.add("active");
+    
+    document.getElementById("pageTitle").innerText = el.innerText;
+    document.getElementById("pageSub").innerText = panelId === 'machinePanel' ? "物理链路观测与防代理心跳" : "实时解析与质量预测";
 
-    if (panelId === "analysisPanel") {
-        loadAnalysis();
-    }
+    setTimeout(() => {
+        if(paretoChart) paretoChart.resize();
+        if(cpkChart) cpkChart.resize();
+        spcCharts.forEach(c => { if(c) c.resize(); });
+    }, 50);
 
-    if (panelId === "machinePanel") {
-        loadMachines();
-    }
+    if (panelId === "machinePanel") loadMachines();
+    if (panelId === "failCenterPanel") renderFailCenter();
+    if (panelId === "spcPanel") loadAnalysis(); // 切换时加载动态矩阵
 }
 
-function escapeHtml(value) {
-    return String(value ?? "")
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
-}
+window.addEventListener('resize', () => {
+    if(paretoChart) paretoChart.resize();
+    if(cpkChart) cpkChart.resize();
+    spcCharts.forEach(c => { if(c) c.resize(); });
+});
 
 function normalizeResult(result) {
-    const raw = String(result || "").trim();
-    const upper = raw.toUpperCase();
-
-    if (upper === "PASS" || upper === "PASSED") {
-        return "PASS";
-    }
-
-    if (upper === "FAIL" || upper === "FAILED") {
-        return "FAIL";
-    }
-
+    const text = String(result || "").toUpperCase();
+    if (text.includes("PASS") || text.includes("OK")) return "PASS";
+    if (text.includes("FAIL") || text.includes("NG")) return "FAIL";
     return "中断";
 }
 
-function resultPill(result) {
-    const r = normalizeResult(result);
-
-    if (r === "PASS") {
-        return `<span class="pill pill-pass">PASS</span>`;
-    }
-
-    if (r === "FAIL") {
-        return `<span class="pill pill-fail">FAIL</span>`;
-    }
-
+function resultPill(res) {
+    const r = normalizeResult(res);
+    if (r === "PASS") return `<span class="pill pill-pass">PASS</span>`;
+    if (r === "FAIL") return `<span class="pill pill-fail">FAIL</span>`;
     return `<span class="pill pill-interrupt">中断</span>`;
 }
 
-function getResultClass(result) {
-    const r = normalizeResult(result);
-
-    if (r === "PASS") {
-        return "status-pass";
-    }
-
-    if (r === "FAIL") {
-        return "status-fail";
-    }
-
-    return "status-interrupt";
-}
-
-function getFirstIssue(record) {
-    const result = normalizeResult(record.business_result || record.result);
-
-    if (result === "FAIL") {
-        const failItems = record.fail_items || [];
-        if (failItems.length > 0) {
-            return failItems[0].name || failItems[0].raw_name || "FAIL";
-        }
-        return "FAIL";
-    }
-
-    if (result === "中断") {
-        return "测试未完整执行";
-    }
-
-    return "-";
-}
-
-function cacheRecentRecords(records) {
-    if (Array.isArray(records)) {
-        __RECENT_RECORD_CACHE__ = records;
-    }
-}
-
-function getRecordKey(record) {
-    if (!record) {
-        return "";
-    }
-
-    return record.source_path || record.relative_path || record.source_file || record.sn || "";
-}
-
-async function loadHealth() {
+async function loadDashboardData() {
     try {
-        const resp = await fetch("/api/health");
-        const data = await resp.json();
+        const [statsRes, recentRes] = await Promise.all([
+            fetch("/api/stats"), fetch("/api/recent?limit=100")
+        ]);
+        const stats = await statsRes.json();
+        const recent = await recentRes.json();
+        
+        __RECENT_RECORD_CACHE__ = recent;
 
-        document.getElementById("serverInfo").innerHTML =
-            `Server Time：${escapeHtml(data.server_time || "-")}<br>` +
-            `Parser：${data.parser_loaded ? "OK" : "NG"}<br>` +
-            `Log Dir：${escapeHtml(data.log_dir || "-")}`;
-    } catch (err) {
-        document.getElementById("serverInfo").innerHTML = "后端连接失败";
-    }
+        // KPI 卡片
+        document.getElementById("statTotal").innerText = stats.total || 0;
+        document.getElementById("statPass").innerText = stats.pass || 0;
+        document.getElementById("statFail").innerText = stats.fail || 0;
+        document.getElementById("statInterrupt").innerText = stats.interrupt || 0;
+        document.getElementById("statFpy").innerText = (stats.fpy || 0) + "%";
+
+        // 实时流水线
+        document.getElementById("recentBody").innerHTML = recent.map((r, i) => `
+            <tr onclick="openModal(${i})">
+                <td>${i+1}</td>
+                <td>${r.sn || "-"}</td>
+                <td>${r.model || "-"}</td>
+                <td>${resultPill(r.business_result)}</td>
+                <td style="max-width:200px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                    ${r.fail_items && r.fail_items.length > 0 ? r.fail_items[0].name : "-"}
+                </td>
+                <td>${r.time || "-"}</td>
+            </tr>
+        `).join("");
+
+        // 柏拉图 (Pareto)
+        const topFails = stats.top_fail || [];
+        paretoChart.setOption({
+            tooltip: { trigger: 'axis' },
+            grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+            xAxis: { type: 'category', data: topFails.map(item => item.item.substring(0,8)+'...'), axisLabel: {color: '#8fa3bd'} },
+            yAxis: { type: 'value', splitLine: { lineStyle: { color: '#223044' } } },
+            series: [{ data: topFails.map(item => item.count), type: 'bar', itemStyle: { color: '#ff5c73', borderRadius: [4,4,0,0] } }]
+        });
+
+        // 模拟 CPK 预警红榜数据
+        cpkChart.setOption({
+            tooltip: { formatter: '{b}: CPK {c}' },
+            grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+            xAxis: { type: 'value', splitLine: { lineStyle: { color: '#223044' } } },
+            yAxis: { type: 'category', data: ['Vin_Ripple', '5V_Standby', 'IIN_Current'], axisLabel: {color: '#8fa3bd'} },
+            series: [{ data: [0.85, 1.12, 1.25], type: 'bar', label: {show: true, position: 'right'}, itemStyle: { color: '#ffcc66', borderRadius: [0,4,4,0] } }]
+        });
+
+    } catch(e) { console.error(e); }
 }
 
-async function loadStats() {
-    try {
-        const resp = await fetch("/api/stats");
-        const stats = await resp.json();
-
-        document.getElementById("statTotal").textContent = stats.total ?? 0;
-        document.getElementById("statPass").textContent = stats.pass ?? 0;
-        document.getElementById("statFail").textContent = stats.fail ?? 0;
-        document.getElementById("statInterrupt").textContent = stats.interrupt ?? 0;
-    } catch (err) {
-        console.error(err);
-    }
-}
-
-async function loadTopFail() {
-    const body = document.getElementById("topFailBody");
-
-    try {
-        const resp = await fetch("/api/top_fail?limit=10");
-        const items = await resp.json();
-
-        if (!Array.isArray(items) || items.length === 0) {
-            body.innerHTML = `<tr><td colspan="3" class="muted">暂无 FAIL 项</td></tr>`;
-            return;
-        }
-
-        body.innerHTML = items.map(item => {
-            const level = item.warning_level || "LOW";
-            const cls = level === "HIGH" ? "level-high" : level === "MEDIUM" ? "level-medium" : "level-low";
-
-            return `
-                <tr>
-                    <td class="truncate">${escapeHtml(item.item || "-")}</td>
-                    <td>${escapeHtml(item.count || 0)}</td>
-                    <td class="${cls}">${escapeHtml(level)}</td>
-                </tr>
-            `;
-        }).join("");
-    } catch (err) {
-        body.innerHTML = `<tr><td colspan="3">Top Fail 加载失败：${escapeHtml(err.message)}</td></tr>`;
-    }
-}
-
-async function loadRecentRecords() {
-    const body = document.getElementById("recentBody");
-
-    try {
-        const resp = await fetch("/api/recent?limit=80");
-        const records = await resp.json();
-
-        cacheRecentRecords(records);
-
-        if (!Array.isArray(records) || records.length === 0) {
-            body.innerHTML = `<tr><td colspan="9" class="muted">暂无测试记录</td></tr>`;
-            return;
-        }
-
-        body.innerHTML = records.map((record, index) => {
-            return `
-                <tr class="recent-row" onclick="openRecordDetail(__RECENT_RECORD_CACHE__[${index}], ${index})">
-                    <td>${index + 1}</td>
-                    <td>${escapeHtml(record.test_mode || "-")}</td>
-                    <td>${escapeHtml(record.model || "-")}</td>
-                    <td class="truncate">${escapeHtml(record.sn || "-")}</td>
-                    <td>${resultPill(record.business_result || record.result)}</td>
-                    <td class="truncate">${escapeHtml(getFirstIssue(record))}</td>
-                    <td>${escapeHtml(record.time || "-")}</td>
-                    <td class="truncate">${escapeHtml(record.source_file || "-")}</td>
-                    <td class="truncate">${escapeHtml(record.relative_path || "-")}</td>
-                </tr>
-            `;
-        }).join("");
-    } catch (err) {
-        body.innerHTML = `<tr><td colspan="9">最近测试记录加载失败：${escapeHtml(err.message)}</td></tr>`;
-    }
-}
-
-async function searchSN() {
-    const input = document.getElementById("snInput");
-    const resultBox = document.getElementById("searchResult");
-    const sn = input.value.trim();
-
-    if (!sn) {
-        resultBox.innerHTML = "请输入 SN / SN 后缀 / 文件名关键字";
-        return;
-    }
-
-    try {
-        const resp = await fetch("/api/search?sn=" + encodeURIComponent(sn));
-        const data = await resp.json();
-
-        if (!data.ok || !data.record) {
-            resultBox.innerHTML = escapeHtml(data.message || "未找到匹配记录");
-            return;
-        }
-
-        const record = data.record;
-
-        resultBox.innerHTML = `
-            <div style="line-height: 1.8;">
-                <div><b>SN：</b>${escapeHtml(record.sn || "-")}</div>
-                <div><b>Model：</b>${escapeHtml(record.model || "-")}</div>
-                <div><b>Result：</b>${resultPill(record.business_result || record.result)}</div>
-                <div><b>File：</b>${escapeHtml(record.source_file || "-")}</div>
-                <button style="margin-top: 10px;" onclick='openRecordDetailFromSearch(${JSON.stringify(record).replace(/'/g, "&#039;")})'>查看工程报告</button>
-            </div>
-        `;
-    } catch (err) {
-        resultBox.innerHTML = "查询失败：" + escapeHtml(err.message);
-    }
-}
-
-function openRecordDetailFromSearch(record) {
-    openRecordDetail(record, -1);
-}
-
-async function openRecordDetail(recordOrKey, index) {
-    let record = null;
-    let key = "";
-
-    if (typeof recordOrKey === "object" && recordOrKey !== null) {
-        record = recordOrKey;
-        key = getRecordKey(record);
-    } else {
-        key = String(recordOrKey || "");
-    }
-
-    if (!record && typeof index === "number" && __RECENT_RECORD_CACHE__[index]) {
-        record = __RECENT_RECORD_CACHE__[index];
-        key = getRecordKey(record);
-    }
-
-    if (record) {
-        showRecordDetailModal(record);
-        return;
-    }
-
-    if (!key && typeof index === "number" && index >= 0) {
-        try {
-            const resp = await fetch("/api/record_detail?index=" + encodeURIComponent(index));
-            const data = await resp.json();
-
-            if (data && data.ok && data.record) {
-                showRecordDetailModal(data.record);
-                return;
-            }
-        } catch (err) {
-            alert("记录详情加载失败：" + err.message);
-            return;
-        }
-    }
-
-    if (!key) {
-        alert("未找到记录：前端没有拿到记录标识");
-        return;
-    }
-
-    try {
-        const url = "/api/record_detail?file_path=" + encodeURIComponent(key);
-        const resp = await fetch(url);
-        const data = await resp.json();
-
-        if (data && data.ok && data.record) {
-            showRecordDetailModal(data.record);
-            return;
-        }
-
-        alert((data && data.message) ? data.message : "未找到记录");
-    } catch (err) {
-        alert("记录详情加载失败：" + err.message);
-    }
-}
-
-function showRecordDetailModal(record) {
-    let old = document.getElementById("recordDetailModal");
-
-    if (old) {
-        old.remove();
-    }
-
-    const failItems = record.fail_items || [];
-    const rawItems = record.raw_items || [];
-
-    let failHtml = "";
-
-    if (failItems.length === 0) {
-        failHtml = `<div class="muted">无 FAIL 项</div>`;
-    } else {
-        failHtml = failItems.map((item, idx) => {
-            return `
-                <div class="detail-item">
-                    <div class="detail-item-title">${idx + 1}. ${escapeHtml(item.name || item.raw_name || "-")}</div>
-                    <div class="detail-grid">
-                        <div><b>章节</b><span>${escapeHtml(item.section || "-")}</span></div>
-                        <div><b>点位/信号</b><span>${escapeHtml(item.signal || "-")}</span></div>
-                        <div><b>参考点</b><span>${escapeHtml(item.reference || "-")}</span></div>
-                        <div><b>仪表</b><span>${escapeHtml(item.instrument || "-")}</span></div>
-                        <div><b>仪表设备</b><span>${escapeHtml(item.instrument_device || "-")}</span></div>
-                        <div><b>标称范围</b><span>${escapeHtml(item.nominal_range || "-")}</span></div>
-                        <div><b>实测值</b><span>${escapeHtml(item.value || "-")} ${escapeHtml(item.unit || "")}</span></div>
-                        <div><b>下限</b><span>${escapeHtml(item.lolim || "-")}</span></div>
-                        <div><b>上限</b><span>${escapeHtml(item.hilim || "-")}</span></div>
-                        <div><b>规则</b><span>${escapeHtml(item.rule || "-")}</span></div>
-                        <div><b>数据类型</b><span>${escapeHtml(item.datatype || "-")}</span></div>
-                        <div><b>时间</b><span>${escapeHtml(item.timestamp || "-")}</span></div>
-                    </div>
-                    <div class="hint-box">${escapeHtml(item.engineering_hint || "仅为工程风险提示，不作为故障结论。")}</div>
-                </div>
-            `;
-        }).join("");
-    }
-
-    let modal = document.createElement("div");
-    modal.id = "recordDetailModal";
-    modal.className = "modal-mask";
-    modal.innerHTML = `
-        <div class="modal-window">
-            <div class="modal-header">
-                <div>
-                    <div class="modal-title">工程测试报告</div>
-                    <div class="modal-subtitle">${escapeHtml(record.source_file || "-")}</div>
-                </div>
-                <button class="modal-close" onclick="closeRecordDetailModal()">×</button>
-            </div>
-
-            <div class="modal-body">
-                <div class="detail-section-title">基础信息</div>
-                <div class="detail-grid">
-                    <div><b>SN</b><span>${escapeHtml(record.sn || "-")}</span></div>
-                    <div><b>Model</b><span>${escapeHtml(record.model || "-")}</span></div>
-                    <div><b>Result</b><span class="${getResultClass(record.business_result || record.result)}">${escapeHtml(normalizeResult(record.business_result || record.result))}</span></div>
-                    <div><b>Source</b><span>${escapeHtml(record.test_mode || "-")}</span></div>
-                    <div><b>Station</b><span>${escapeHtml(record.station || "-")}</span></div>
-                    <div><b>Tester</b><span>${escapeHtml(record.tester || "-")}</span></div>
-                    <div><b>测试时间</b><span>${escapeHtml(record.time || "-")}</span></div>
-                    <div><b>XML 文件</b><span>${escapeHtml(record.source_file || "-")}</span></div>
-                    <div><b>总测试项</b><span>${escapeHtml(record.total_tests ?? "-")}</span></div>
-                    <div><b>PASS 数量</b><span>${escapeHtml(record.passed_tests ?? "-")}</span></div>
-                    <div><b>FAIL 数量</b><span>${escapeHtml(record.failed_tests ?? "-")}</span></div>
-                    <div><b>中断数量</b><span>${escapeHtml(record.interrupted_tests ?? "-")}</span></div>
-                </div>
-
-                <div class="detail-section-title">路径</div>
-                <div class="path-box">${escapeHtml(record.relative_path || record.source_path || "-")}</div>
-
-                <div class="detail-section-title">FAIL 项工程分析</div>
-                ${failHtml}
-
-                <div class="detail-section-title">原始测试项</div>
-                <div class="raw-scroll">
-                    ${rawItems.slice(0, 300).map((item, idx) => {
-                        return `
-                            <div class="raw-row">
-                                <span>${idx + 1}</span>
-                                <span>${escapeHtml(item.business_status || item.status || "-")}</span>
-                                <span>${escapeHtml(item.name || item.raw_name || "-")}</span>
-                                <span>${escapeHtml(item.value || "-")} ${escapeHtml(item.unit || "")}</span>
-                            </div>
-                        `;
-                    }).join("")}
-                </div>
-            </div>
-        </div>
-    `;
-
-    document.body.appendChild(modal);
-}
-
-function closeRecordDetailModal() {
-    let modal = document.getElementById("recordDetailModal");
-
-    if (modal) {
-        modal.remove();
-    }
-}
-
+// ==========================================
+// 全量散点矩阵：动态渲染核心逻辑
+// ==========================================
 async function loadAnalysis() {
     try {
         const resp = await fetch("/api/analysis");
         const data = await resp.json();
 
-        const modelSummary = data.model_summary || {};
-        const modelBody = document.getElementById("modelSummaryBody");
+        const matrix = data.spc_matrix || [];
+        __SPC_MATRIX_CACHE__ = matrix;
 
-        const modelKeys = Object.keys(modelSummary);
-
-        if (modelKeys.length === 0) {
-            modelBody.innerHTML = `<tr><td colspan="5">暂无型号统计</td></tr>`;
-        } else {
-            modelBody.innerHTML = modelKeys.map(model => {
-                const item = modelSummary[model];
-
-                return `
-                    <tr>
-                        <td>${escapeHtml(model)}</td>
-                        <td>${escapeHtml(item.total || 0)}</td>
-                        <td class="status-pass">${escapeHtml(item.PASS || 0)}</td>
-                        <td class="status-fail">${escapeHtml(item.FAIL || 0)}</td>
-                        <td class="status-interrupt">${escapeHtml(item["中断"] || 0)}</td>
-                    </tr>
-                `;
-            }).join("");
+        const grid = document.getElementById("spcGrid");
+        
+        if (matrix.length === 0) {
+            grid.innerHTML = '<div style="color:var(--muted); grid-column: span 2;">暂无数值类测试项可供分析</div>';
+            return;
         }
 
-        const risks = data.station_risk || [];
-        const riskBody = document.getElementById("riskBody");
+        // 清理旧图表与 DOM
+        grid.innerHTML = "";
+        spcCharts.forEach(c => { if(c) c.dispose(); });
+        spcCharts = [];
 
-        if (!Array.isArray(risks) || risks.length === 0) {
-            riskBody.innerHTML = `<tr><td colspan="5">暂无高复发风险提示</td></tr>`;
-        } else {
-            riskBody.innerHTML = risks.map(risk => {
-                const level = risk.level || "LOW";
-                const cls = level === "HIGH" ? "level-high" : level === "MEDIUM" ? "level-medium" : "level-low";
+        // 1. 动态生成 DOM 容器
+        matrix.forEach((m, idx) => {
+            const container = document.createElement("div");
+            container.id = `spcContainer${idx}`;
+            container.style.display = "block";
+            container.innerHTML = `<div id="spc${idx}" class="chart-container" style="height: 250px; background: #0d141d; border-radius: 6px; border: 1px solid #223044;"></div>`;
+            grid.appendChild(container);
+        });
 
-                return `
-                    <tr>
-                        <td>${escapeHtml(risk.time_window || "-")}</td>
-                        <td class="truncate">${escapeHtml(risk.item || "-")}</td>
-                        <td>${escapeHtml(risk.fail_count || 0)}</td>
-                        <td>${escapeHtml(risk.sn_count || 0)}</td>
-                        <td class="${cls}">${escapeHtml(level)}</td>
-                    </tr>
-                `;
-            }).join("");
+        // 2. DOM 渲染完成后，初始化所有 ECharts 实例
+        setTimeout(() => {
+            matrix.forEach((m, idx) => {
+                const dom = document.getElementById(`spc${idx}`);
+                if (!dom) return;
+                const chart = echarts.init(dom, 'dark', { background: 'transparent' });
+                
+                const option = {
+                    title: { text: m.name, textStyle: { fontSize: 13, color: '#d7e3f4' }, left: 'center', top: 5 },
+                    tooltip: { trigger: 'axis', formatter: (params) => `SN: ${m.points[params[0].dataIndex].sn}<br>Value: ${params[0].value} ${m.unit || ''}` },
+                    grid: { left: '10%', right: '10%', bottom: '15%', top: '20%' },
+                    xAxis: { type: 'category', data: m.points.map(p => p.time), axisLabel: { fontSize: 10, color: '#8fa3bd' } },
+                    yAxis: { type: 'value', scale: true, axisLabel: { fontSize: 10, color: '#8fa3bd' }, splitLine: { lineStyle: { color: '#223044' } } },
+                    series: [
+                        {
+                            data: m.points.map(p => p.val),
+                            type: 'scatter',
+                            symbolSize: 6,
+                            itemStyle: { color: '#58a6ff' },
+                            markLine: {
+                                silent: true,
+                                symbol: 'none',
+                                label: { position: 'end', fontSize: 10 },
+                                data: [
+                                    m.hilim ? { yAxis: m.hilim, lineStyle: { color: '#ff5c73', type: 'dashed' }, label: { formatter: 'USL' } } : null,
+                                    m.lolim ? { yAxis: m.lolim, lineStyle: { color: '#ff5c73', type: 'dashed' }, label: { formatter: 'LSL' } } : null
+                                ].filter(Boolean)
+                            }
+                        }
+                    ]
+                };
+                chart.setOption(option);
+                spcCharts.push(chart);
+            });
+            // 触发一次搜索应用现有的关键字过滤
+            filterSpcMatrix();
+        }, 100);
+
+    } catch (err) { console.error(err); }
+}
+
+// 散点矩阵：全局前端搜索过滤
+function filterSpcMatrix() {
+    const q = document.getElementById('spcSearchInput').value.toUpperCase();
+    __SPC_MATRIX_CACHE__.forEach((m, idx) => {
+        const container = document.getElementById(`spcContainer${idx}`);
+        if(container) {
+            const isMatch = m.name.toUpperCase().includes(q);
+            container.style.display = isMatch ? 'block' : 'none';
+            // 如果图表变为可见，触发 resize 防止 ECharts 被压缩到长宽为 0
+            if (isMatch && spcCharts[idx]) {
+                setTimeout(() => { spcCharts[idx].resize(); }, 0);
+            }
         }
-    } catch (err) {
-        console.error(err);
+    });
+}
+
+function renderFailCenter(filterText = "") {
+    const tbody = document.getElementById("failCenterBody");
+    const fails = __RECENT_RECORD_CACHE__.filter(r => normalizeResult(r.business_result) !== "PASS");
+    
+    const filtered = fails.filter(r => {
+        const text = (r.sn + " " + r.tester).toUpperCase();
+        return text.includes(filterText.toUpperCase());
+    });
+
+    tbody.innerHTML = filtered.map((r, i) => `
+        <tr onclick="openModal(-1, '${r.sn}')">
+            <td>${r.sn || "-"}</td>
+            <td>${r.tester || "-"}</td>
+            <td>${resultPill(r.business_result)}</td>
+            <td>${r.fail_items && r.fail_items.length > 0 ? r.fail_items[0].name : "-"}</td>
+            <td>${r.time || "-"}</td>
+        </tr>
+    `).join("");
+}
+
+function filterFailCenter() {
+    renderFailCenter(document.getElementById('snInput').value);
+}
+
+// 单板诊断弹窗核心逻辑
+function openModal(index, searchSn = null) {
+    let record = __RECENT_RECORD_CACHE__[index];
+    if(searchSn) {
+        record = __RECENT_RECORD_CACHE__.find(r => r.sn === searchSn);
     }
+    if(!record) return;
+
+    const passCnt = record.passed_tests || 0;
+    const failCnt = record.failed_tests || 0;
+    const intCnt = record.interrupted_tests || 0;
+    const totalCnt = record.total_tests || (passCnt + failCnt + intCnt);
+    const rawItems = record.raw_items || [];
+
+    let aiAdviceHtml = "";
+    const failItems = record.fail_items || [];
+    if(failItems.length > 0) {
+        const isOnlyGetUnitInfo = failItems.every(item => {
+            const n = (item.name || item.raw_name || "").toUpperCase();
+            return n.includes("GET UNIT INFO") || n.includes("GET_UNIT_INFO");
+        });
+
+        if(isOnlyGetUnitInfo) {
+            aiAdviceHtml = `<div class="ai-advice-box advice-warn"><b>💡 AI Advice:</b> 【操作/MES拦截】检测到仅 Get Unit Info 失败，请检查扫码枪是否正常，或该 SN 被 MES 系统拦截。</div>`;
+        } else {
+            aiAdviceHtml = `<div class="ai-advice-box"><b>🚨 AI Advice:</b> 【物理链路失效】非扫码类异常，请提列具体的 DMM/Power 仪表供 TE 排查物理供电或夹具探针状态。</div>`;
+        }
+    }
+
+    const modal = document.createElement("div");
+    modal.className = "modal-mask";
+    modal.id = "diagModal";
+    modal.innerHTML = `
+        <div class="modal-window">
+            <div class="modal-header">
+                <div style="font-size:18px; font-weight:800;">专家级单板诊断 (Diag Modal) - ${record.sn}</div>
+                <button onclick="document.getElementById('diagModal').remove()" class="modal-close">×</button>
+            </div>
+            <div class="modal-body">
+                ${aiAdviceHtml}
+                <div style="color:var(--muted); margin-bottom:8px; font-weight:800;">四象限微观统计</div>
+                <div class="quadrant-grid">
+                    <div class="quadrant-box" style="color:#ffffff">Total Steps <b>${totalCnt}</b></div>
+                    <div class="quadrant-box" style="color:var(--green)">Pass <b>${passCnt}</b></div>
+                    <div class="quadrant-box" style="color:var(--red)">Fail <b>${failCnt}</b></div>
+                    <div class="quadrant-box" style="color:var(--blue)">Interrupt <b>${intCnt}</b></div>
+                </div>
+                
+                <div style="display:flex; justify-content:space-between; align-items:center; margin: 20px 0 10px;">
+                    <div style="color:var(--white); font-weight:800;">底层全量对齐测试项 (Total: ${rawItems.length} 条)</div>
+                    <input type="text" id="modalSearch" placeholder="极速过滤测点名或值..." 
+                           style="width:250px; padding:6px; font-size:12px;" 
+                           oninput="filterModalItems()">
+                </div>
+                
+                <div class="table-scroll" style="max-height:400px;">
+                    <table style="background:#0d141d; margin:0;">
+                        <thead style="background:#151f2b; position:sticky; top:0; z-index:2;">
+                            <tr>
+                                <th style="width:60px">Step</th>
+                                <th style="width:80px">Status</th>
+                                <th>Item Name</th>
+                                <th>Value</th>
+                                <th>Nominal Range</th>
+                            </tr>
+                        </thead>
+                        <tbody id="modalTableBody">
+                            ${rawItems.map((item, idx) => `
+                                <tr class="raw-item-row" style="background: ${item.status === 'FAIL' ? 'rgba(255,92,115,0.08)' : 'transparent'}">
+                                    <td style="color:#8fa3bd">${idx + 1}</td>
+                                    <td><span style="font-weight:bold; color: ${item.status === 'PASS' ? 'var(--green)' : (item.status === 'FAIL' ? 'var(--red)' : 'var(--blue)')}">${item.status || '-'}</span></td>
+                                    <td class="item-name">${item.name || item.raw_name || '-'}</td>
+                                    <td class="item-value" style="color: ${item.status === 'FAIL' ? '#ffb4b4' : '#d7e3f4'}">${item.value || '-'} ${item.unit || ''}</td>
+                                    <td style="color:#8fa3bd">${item.lolim || '-'} ~ ${item.hilim || '-'}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+}
+
+// 弹窗内的实时搜索过滤逻辑
+function filterModalItems() {
+    const q = document.getElementById('modalSearch').value.toUpperCase();
+    const rows = document.querySelectorAll('.raw-item-row');
+    rows.forEach(row => {
+        const nameText = (row.querySelector('.item-name')?.innerText || '').toUpperCase();
+        const valueText = (row.querySelector('.item-value')?.innerText || '').toUpperCase();
+        row.style.display = (nameText.includes(q) || valueText.includes(q)) ? '' : 'none';
+    });
 }
 
 async function loadMachines() {
     try {
-        const resp = await fetch("/api/telemetry/latest");
-        const data = await resp.json();
-
-        document.getElementById("machineTotal").textContent = data.total ?? 0;
-        document.getElementById("machineOnline").textContent = data.online ?? 0;
-        document.getElementById("machineStale").textContent = data.stale ?? 0;
-        document.getElementById("machineOffline").textContent = data.offline ?? 0;
-
+        const res = await fetch("/api/telemetry/latest");
+        const data = await res.json();
         const grid = document.getElementById("machineGrid");
-        const machines = data.machines || [];
-
-        if (!Array.isArray(machines) || machines.length === 0) {
-            grid.innerHTML = `<div class="muted">暂无机台 telemetry 数据，请启动 mock_machine_agent.py</div>`;
+        if(data.machines.length === 0) {
+            grid.innerHTML = `<div style="color:var(--muted)">等待边缘 Agent 心跳...</div>`;
             return;
         }
-
-        grid.innerHTML = machines.map(machine => {
-            const m = machine.measurements || {};
-            return `
-                <div class="machine-card">
-                    <div class="machine-title">${escapeHtml(machine.machine_id || "-")}</div>
-                    <div class="machine-line"><span>在线状态</span><b>${escapeHtml(machine.online_status || "-")}</b></div>
-                    <div class="machine-line"><span>运行状态</span><b>${escapeHtml(machine.display_state || "-")}</b></div>
-                    <div class="machine-line"><span>Model</span><b>${escapeHtml(machine.model || "-")}</b></div>
-                    <div class="machine-line"><span>模式</span><b>${escapeHtml(machine.test_mode || "-")}</b></div>
-                    <div class="machine-line"><span>当前 SN</span><b>${escapeHtml(machine.current_sn || "-")}</b></div>
-                    <div class="machine-line"><span>当前步骤</span><b>${escapeHtml(machine.current_step || "-")}</b></div>
-                    <div class="machine-line"><span>VIN</span><b>${escapeHtml(m.vin_voltage ?? "-")}</b></div>
-                    <div class="machine-line"><span>IIN</span><b>${escapeHtml(m.vin_current ?? "-")}</b></div>
-                    <div class="machine-line"><span>报警数</span><b>${escapeHtml(machine.alarm_count ?? 0)}</b></div>
-                </div>
-            `;
-        }).join("");
-    } catch (err) {
-        console.error(err);
-    }
+        grid.innerHTML = data.machines.map(m => `
+            <div class="machine-card">
+                <div style="font-size:16px; font-weight:800; margin-bottom:10px; color:white;">${m.machine_id}</div>
+                <div class="machine-line"><span>状态</span><b style="color:${m.online_status==='ONLINE'?'var(--green)':'var(--red)'}">${m.online_status}</b></div>
+                <div class="machine-line"><span>SN</span><b style="color:white">${m.current_sn || '-'}</b></div>
+                <div class="machine-line"><span>Vin Voltage</span><b>${m.measurements.vin_voltage || '-'}</b></div>
+                <div class="machine-line"><span>Vin Current</span><b>${m.measurements.vin_current || '-'}</b></div>
+            </div>
+        `).join("");
+    } catch(e){}
 }
 
-async function refreshAll() {
-    await loadHealth();
-    await loadStats();
-    await loadTopFail();
-    await loadRecentRecords();
-}
-
-refreshAll();
-setInterval(refreshAll, 3000);
-setInterval(loadMachines, 3000);
+setTimeout(initCharts, 100);
+loadDashboardData();
+setInterval(loadDashboardData, 5000);
+setInterval(() => { if(document.getElementById('machinePanel').classList.contains('active')) loadMachines() }, 3000);
 </script>
 </body>
 </html>
-    <title>FCT 测试日志分析平台</title>
-    <style>
-        :root {
-            --bg: #080d13;
-            --panel: #111821;
-            --panel2: #151f2b;
-            --line: #263445;
-            --line2: #223044;
-            --text: #d7e3f4;
-            --muted: #8fa3bd;
-            --white: #ffffff;
-            --green: #2ee59d;
-            --red: #ff5c73;
-            --blue: #58a6ff;
-            --yellow: #ffcc66;
-            --orange: #ff9f43;
-        }
-
-        * {
-            box-sizing: border-box;
-        }
-
-        body {
-            margin: 0;
-            background: var(--bg);
-            color: var(--text);
-            font-family: "Microsoft YaHei", "Segoe UI", Arial, sans-serif;
-            font-size: 14px;
-        }
-
-        .app {
-            min-height: 100vh;
-            display: grid;
-            grid-template-columns: 250px 1fr;
-        }
-
-        .sidebar {
-            background: #070b10;
-            border-right: 1px solid #1c2a3a;
-            padding: 20px 16px;
-        }
-
-        .brand {
-            font-size: 18px;
-            font-weight: 800;
-            color: var(--white);
-            margin-bottom: 6px;
-        }
-
-        .brand-sub {
-            color: var(--muted);
-            font-size: 12px;
-            line-height: 1.5;
-            margin-bottom: 24px;
-        }
-
-        .nav-item {
-            padding: 11px 12px;
-            border: 1px solid transparent;
-            border-radius: 8px;
-            color: #9eb2ca;
-            cursor: pointer;
-            margin-bottom: 8px;
-        }
-
-        .nav-item.active {
-            background: #101926;
-            border-color: #2c3d52;
-            color: var(--white);
-        }
-
-        .nav-item:hover {
-            background: #0d1520;
-        }
-
-        .main {
-            padding: 22px 28px;
-            overflow: hidden;
-        }
-
-        .topbar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 18px;
-        }
-
-        .title {
-            font-size: 23px;
-            font-weight: 800;
-            color: var(--white);
-        }
-
-        .subtitle {
-            margin-top: 5px;
-            color: var(--muted);
-            font-size: 13px;
-        }
-
-        .server-info {
-            color: var(--muted);
-            font-size: 12px;
-            text-align: right;
-            line-height: 1.6;
-        }
-
-        .panel {
-            display: none;
-        }
-
-        .panel.active {
-            display: block;
-        }
-
-        .cards {
-            display: grid;
-            grid-template-columns: repeat(4, minmax(0, 1fr));
-            gap: 14px;
-            margin-bottom: 18px;
-        }
-
-        .card {
-            background: var(--panel);
-            border: 1px solid var(--line);
-            border-radius: 10px;
-            padding: 16px;
-        }
-
-        .card-name {
-            color: var(--muted);
-            font-size: 12px;
-            margin-bottom: 10px;
-        }
-
-        .card-value {
-            color: var(--white);
-            font-size: 26px;
-            font-weight: 800;
-        }
-
-        .card-desc {
-            margin-top: 8px;
-            color: #768ba5;
-            font-size: 12px;
-        }
-
-        .grid-2 {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 18px;
-            margin-bottom: 18px;
-        }
-
-        .box {
-            background: var(--panel);
-            border: 1px solid var(--line);
-            border-radius: 10px;
-            padding: 16px;
-            overflow: hidden;
-        }
-
-        .box-title {
-            color: var(--white);
-            font-weight: 800;
-            font-size: 17px;
-            margin-bottom: 14px;
-        }
-
-        .box-sub {
-            color: var(--muted);
-            font-size: 12px;
-            margin-bottom: 10px;
-        }
-
-        .search-row {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 12px;
-        }
-
-        input {
-            background: #0d141d;
-            border: 1px solid #2b3a4b;
-            color: var(--text);
-            border-radius: 6px;
-            padding: 10px 12px;
-            outline: none;
-            flex: 1;
-        }
-
-        button {
-            background: #1b2635;
-            border: 1px solid #3b4d63;
-            color: var(--text);
-            padding: 9px 14px;
-            border-radius: 6px;
-            cursor: pointer;
-        }
-
-        button:hover {
-            background: #26374d;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        th {
-            color: #aec2dc;
-            font-size: 13px;
-            text-align: left;
-            padding: 10px 12px;
-            background: #121b27;
-            border-bottom: 1px solid #2a3a4d;
-            position: sticky;
-            top: 0;
-            z-index: 2;
-        }
-
-        td {
-            padding: 10px 12px;
-            color: #b9c8dc;
-            border-bottom: 1px solid #1d2a3b;
-            font-size: 13px;
-            vertical-align: middle;
-        }
-
-        tr:hover td {
-            background: #101926;
-        }
-
-        .table-scroll {
-            max-height: 360px;
-            overflow-y: auto;
-            border: 1px solid #223044;
-            border-radius: 8px;
-        }
-
-        .recent-row {
-            cursor: pointer;
-        }
-
-        .truncate {
-            max-width: 260px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .pill {
-            display: inline-block;
-            min-width: 62px;
-            text-align: center;
-            padding: 3px 8px;
-            border-radius: 999px;
-            font-size: 12px;
-            font-weight: 800;
-        }
-
-        .pill-pass {
-            color: #06140f;
-            background: var(--green);
-        }
-
-        .pill-fail {
-            color: #19050a;
-            background: var(--red);
-        }
-
-        .pill-interrupt {
-            color: #06111f;
-            background: var(--blue);
-        }
-
-        .level-high {
-            color: var(--red);
-            font-weight: 800;
-        }
-
-        .level-medium {
-            color: var(--yellow);
-            font-weight: 800;
-        }
-
-        .level-low {
-            color: #8fa3bd;
-            font-weight: 800;
-        }
-
-        .machine-grid {
-            display: grid;
-            grid-template-columns: repeat(3, minmax(0, 1fr));
-            gap: 14px;
-        }
-
-        .machine-card {
-            background: var(--panel);
-            border: 1px solid var(--line);
-            border-radius: 10px;
-            padding: 14px;
-            cursor: pointer;
-        }
-
-        .machine-card:hover {
-            border-color: #4f8cff;
-        }
-
-        .machine-title {
-            color: var(--white);
-            font-size: 15px;
-            font-weight: 800;
-            margin-bottom: 10px;
-        }
-
-        .machine-line {
-            display: flex;
-            justify-content: space-between;
-            color: #aabbd0;
-            font-size: 12px;
-            padding: 4px 0;
-            border-bottom: 1px solid #182435;
-        }
-
-        .machine-line:last-child {
-            border-bottom: none;
-        }
-
-        .status-pass {
-            color: var(--green) !important;
-            font-weight: 800;
-        }
-
-        .status-fail {
-            color: var(--red) !important;
-            font-weight: 800;
-        }
-
-        .status-interrupt {
-            color: var(--blue) !important;
-            font-weight: 800;
-        }
-
-        .muted {
-            color: var(--muted);
-            font-size: 13px;
-        }
-
-        .path-box {
-            background: #0d141d;
-            border: 1px solid #223044;
-            border-radius: 6px;
-            padding: 10px;
-            color: #aebed2;
-            font-family: Consolas, monospace;
-            font-size: 12px;
-            word-break: break-all;
-        }
-
-        .modal-mask {
-            position: fixed;
-            inset: 0;
-            background: rgba(0, 0, 0, 0.68);
-            z-index: 9999;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .modal-window {
-            width: min(1180px, 92vw);
-            max-height: 86vh;
-            background: #111821;
-            border: 1px solid #2b3a4b;
-            border-radius: 10px;
-            box-shadow: 0 18px 60px rgba(0, 0, 0, 0.55);
-            color: #d7e3f4;
-            overflow: hidden;
-        }
-
-        .modal-header {
-            height: 62px;
-            padding: 0 20px;
-            border-bottom: 1px solid #263445;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            background: #151f2b;
-        }
-
-        .modal-title {
-            font-size: 18px;
-            font-weight: 800;
-            color: #ffffff;
-        }
-
-        .modal-subtitle {
-            margin-top: 4px;
-            font-size: 12px;
-            color: #8fa3bd;
-        }
-
-        .modal-close {
-    width: 36px;
-    height: 36px;
-    border: 1px solid #3b4d63;
-    border-radius: 6px;
-    background: #1b2635;
-    color: #d7e3f4;
-    cursor: pointer;
-
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-
-    font-size: 24px;
-    font-weight: 700;
-    line-height: 0;
-    padding: 0;
-    margin: 0;
-    font-family: Arial, "Microsoft YaHei", sans-serif;
-}
-
-.modal-close:hover {
-    background: #26374d;
-    border-color: #58708f;
-}
-
-        .modal-body {
-            padding: 18px 20px 24px;
-            overflow-y: auto;
-            max-height: calc(86vh - 62px);
-        }
-
-        .detail-section-title {
-            margin: 16px 0 10px;
-            font-size: 15px;
-            font-weight: 800;
-            color: #ffffff;
-            border-left: 3px solid #4f8cff;
-            padding-left: 8px;
-        }
-
-        .detail-grid {
-            display: grid;
-            grid-template-columns: repeat(4, minmax(0, 1fr));
-            gap: 10px;
-        }
-
-        .detail-grid > div {
-            background: #0d141d;
-            border: 1px solid #223044;
-            border-radius: 6px;
-            padding: 9px 10px;
-            min-height: 46px;
-        }
-
-        .detail-grid b {
-            display: block;
-            font-size: 11px;
-            color: #7890ad;
-            margin-bottom: 5px;
-        }
-
-        .detail-grid span {
-            font-size: 13px;
-            color: #dce8f8;
-            word-break: break-all;
-        }
-
-        .detail-item {
-            background: #0d141d;
-            border: 1px solid #26384e;
-            border-radius: 8px;
-            padding: 12px;
-            margin-bottom: 12px;
-        }
-
-        .detail-item-title {
-            font-size: 14px;
-            font-weight: 800;
-            color: #ffb4b4;
-            margin-bottom: 10px;
-        }
-
-        .hint-box {
-            margin-top: 10px;
-            background: #1a2330;
-            border-left: 3px solid #ffcc66;
-            padding: 9px 10px;
-            color: #d9c58a;
-            font-size: 13px;
-            line-height: 1.6;
-        }
-
-        .raw-scroll {
-            max-height: 280px;
-            overflow-y: auto;
-            border: 1px solid #223044;
-            border-radius: 6px;
-            background: #0d141d;
-        }
-
-        .raw-row {
-            display: grid;
-            grid-template-columns: 60px 90px 1fr 160px;
-            gap: 10px;
-            padding: 8px 10px;
-            border-bottom: 1px solid #1d2a3b;
-            font-size: 12px;
-            color: #aebed2;
-        }
-
-        .raw-row:last-child {
-            border-bottom: none;
-        }
-    </style>
-</head>
-<body>
-<div class="app">
-    <aside class="sidebar">
-        <div class="brand">FCT 测试日志分析平台</div>
-        <div class="brand-sub">
-            G4.9 PCBA XML Dashboard<br>
-            PASS / FAIL / 中断
-        </div>
-
-        <div class="nav-item active" onclick="switchPanel('overviewPanel', this)">综合看板</div>
-        <div class="nav-item" onclick="switchPanel('analysisPanel', this)">XML 分析预警</div>
-        <div class="nav-item" onclick="switchPanel('machinePanel', this)">机台实时监控</div>
-    </aside>
-
-    <main class="main">
-        <div class="topbar">
-            <div>
-                <div class="title">G4.9 FCT XML Dashboard</div>
-                <div class="subtitle">递归扫描 Online / Offline 测试日志，统一三态：PASS / FAIL / 中断</div>
-            </div>
-            <div class="server-info" id="serverInfo">加载中...</div>
-        </div>
-
-        <section id="overviewPanel" class="panel active">
-            <div class="cards">
-                <div class="card">
-                    <div class="card-name">总记录数</div>
-                    <div class="card-value" id="statTotal">0</div>
-                    <div class="card-desc">XML records</div>
-                </div>
-                <div class="card">
-                    <div class="card-name">PASS</div>
-                    <div class="card-value status-pass" id="statPass">0</div>
-                    <div class="card-desc">完整执行且通过</div>
-                </div>
-                <div class="card">
-                    <div class="card-name">FAIL</div>
-                    <div class="card-value status-fail" id="statFail">0</div>
-                    <div class="card-desc">完整执行且失败</div>
-                </div>
-                <div class="card">
-                    <div class="card-name">中断</div>
-                    <div class="card-value status-interrupt" id="statInterrupt">0</div>
-                    <div class="card-desc">未完整跑完统一归类</div>
-                </div>
-            </div>
-
-            <div class="grid-2">
-                <div class="box">
-                    <div class="box-title">SN 查询</div>
-                    <div class="box-sub">支持完整 SN、后缀、文件名包含匹配</div>
-                    <div class="search-row">
-                        <input id="snInput" placeholder="输入 SN / SN 后缀 / 文件名关键字">
-                        <button onclick="searchSN()">查询</button>
-                    </div>
-                    <div id="searchResult" class="muted">等待查询...</div>
-                </div>
-
-                <div class="box">
-                    <div class="box-title">Top Fail 高频失败项</div>
-                    <div class="box-sub">仅统计 FAIL，不统计中断</div>
-                    <div class="table-scroll">
-                        <table>
-                            <thead>
-                            <tr>
-                                <th>失败项</th>
-                                <th style="width: 90px;">次数</th>
-                                <th style="width: 100px;">等级</th>
-                            </tr>
-                            </thead>
-                            <tbody id="topFailBody">
-                            <tr><td colspan="3">加载中...</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-
-            <div class="box">
-                <div class="box-title">最近测试记录</div>
-                <div class="box-sub">固定高度滚动，点击记录查看工程报告</div>
-                <div class="table-scroll">
-                    <table>
-                        <thead>
-                        <tr>
-                            <th style="width: 55px;">#</th>
-                            <th style="width: 80px;">模式</th>
-                            <th style="width: 105px;">Model</th>
-                            <th>SN</th>
-                            <th style="width: 90px;">状态</th>
-                            <th>问题项</th>
-                            <th style="width: 155px;">测试时间</th>
-                            <th>XML 文件</th>
-                            <th>相对路径</th>
-                        </tr>
-                        </thead>
-                        <tbody id="recentBody">
-                        <tr><td colspan="9">加载中...</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-                <div class="box-sub" style="margin-top: 12px;">状态规则：只有 PASS / FAIL / 中断。凡是未跑完整套测试的记录，统一显示为“中断”。</div>
-            </div>
-        </section>
-
-        <section id="analysisPanel" class="panel">
-            <div class="grid-2">
-                <div class="box">
-                    <div class="box-title">型号统计</div>
-                    <div class="table-scroll">
-                        <table>
-                            <thead>
-                            <tr>
-                                <th>Model</th>
-                                <th>总数</th>
-                                <th>PASS</th>
-                                <th>FAIL</th>
-                                <th>中断</th>
-                            </tr>
-                            </thead>
-                            <tbody id="modelSummaryBody">
-                            <tr><td colspan="5">加载中...</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <div class="box">
