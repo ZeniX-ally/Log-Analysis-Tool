@@ -3,9 +3,16 @@
 import os
 import re
 import sys
+import json
+import math
 from datetime import datetime
 
-from flask import Flask, jsonify, render_template, request
+try:
+    from flask import Flask, jsonify, render_template, request
+except ImportError as exc:
+    raise ImportError(
+        "Flask is required to run this application. Install it with 'pip install Flask'."
+    ) from exc
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.abspath(os.path.join(BASE_DIR, ".."))
@@ -16,6 +23,8 @@ if PROJECT_ROOT not in sys.path:
 TEMPLATE_DIR = os.path.join(PROJECT_ROOT, "frontend", "templates")
 STATIC_DIR = os.path.join(PROJECT_ROOT, "frontend", "static")
 LOG_DIR = os.path.join(PROJECT_ROOT, "data", "logs")
+
+CACHE_FILE = os.path.join(PROJECT_ROOT, "data", "telemetry_cache.json")
 
 ONLINE_SECONDS = 5
 STALE_SECONDS = 30
@@ -54,7 +63,6 @@ except Exception:
 def now_text():
     return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-
 def parse_time_to_timestamp(time_text):
     if not time_text:
         return 0.0
@@ -75,7 +83,6 @@ def parse_time_to_timestamp(time_text):
         pass
     return 0.0
 
-
 def parse_filename_time_to_timestamp(source_file):
     text = str(source_file or "")
     match_obj = re.search(r"_(\d{17})_", text)
@@ -88,13 +95,11 @@ def parse_filename_time_to_timestamp(source_file):
     except Exception:
         return 0.0
 
-
 def seconds_since(time_text):
     timestamp_value = parse_time_to_timestamp(time_text)
     if timestamp_value <= 0:
         return 999999.0
     return max(0.0, datetime.now().timestamp() - timestamp_value)
-
 
 def get_record_sort_timestamp(record):
     for key in ["time", "dut_time", "panel_time", "batch_time"]:
@@ -109,10 +114,8 @@ def get_record_sort_timestamp(record):
     except Exception:
         return 0.0
 
-
 def sort_records_latest_first(records):
     return sorted(records, key=get_record_sort_timestamp, reverse=True)
-
 
 def safe_load_records():
     if load_all_fct_records is None:
@@ -123,7 +126,6 @@ def safe_load_records():
         return sort_records_latest_first(records)
     except Exception as exc:
         return []
-
 
 def normalize_result(result):
     raw = str(result or "").strip()
@@ -137,15 +139,12 @@ def normalize_result(result):
         return "FAIL"
     return "中断"
 
-
 def fallback_build_top_fail(records, limit=10):
     counter = {}
     for record in records:
         fail_items = record.get("fail_items", []) or []
         for item in fail_items:
             name = item.get("name") or item.get("raw_name") or item.get("item") or "-"
-            
-            # 自动剔除因人为操作导致的 Get Unit Info 报错
             if "GET UNIT INFO" in name.upper() or "GET_UNIT_INFO" in name.upper():
                 continue
 
@@ -175,12 +174,7 @@ def fallback_build_top_fail(records, limit=10):
     for name in counter:
         item = counter[name]
         count = item["count"]
-        if count >= 5:
-            level = "HIGH"
-        elif count >= 3:
-            level = "MEDIUM"
-        else:
-            level = "LOW"
+        level = "HIGH" if count >= 5 else "MEDIUM" if count >= 3 else "LOW"
         
         result.append({
             "item": item["item"],
@@ -195,52 +189,28 @@ def fallback_build_top_fail(records, limit=10):
     result.sort(key=lambda x: x.get("count", 0), reverse=True)
     return result[:limit]
 
-
 def get_top_fail_records(records, limit=10):
     if build_top_fail:
         try:
             data = build_top_fail(records, limit=limit)
-            if isinstance(data, list):
-                return data
-        except Exception:
-            pass
+            if isinstance(data, list): return data
+        except Exception: pass
     return fallback_build_top_fail(records, limit=limit)
-
 
 def build_stats(records):
     total = len(records)
-    pass_count = 0
-    fail_count = 0
-    interrupt_count = 0
-
-    for record in records:
-        result = record.get("business_result") or record.get("result") or "中断"
-        result = normalize_result(result)
-
-        if result == "PASS":
-            pass_count += 1
-        elif result == "FAIL":
-            fail_count += 1
-        else:
-            interrupt_count += 1
-
-    fpy = 0
-    fail_rate = 0
-    interrupt_rate = 0
-
-    if total > 0:
-        fpy = round(pass_count / total * 100, 2)
-        fail_rate = round(fail_count / total * 100, 2)
-        interrupt_rate = round(interrupt_count / total * 100, 2)
+    pass_count = sum(1 for r in records if normalize_result(r.get("business_result") or r.get("result")) == "PASS")
+    fail_count = sum(1 for r in records if normalize_result(r.get("business_result") or r.get("result")) == "FAIL")
+    interrupt_count = total - pass_count - fail_count
 
     return {
         "total": total,
         "pass": pass_count,
         "fail": fail_count,
         "interrupt": interrupt_count,
-        "fpy": fpy,
-        "fail_rate": fail_rate,
-        "interrupt_rate": interrupt_rate,
+        "fpy": round(pass_count / total * 100, 2) if total > 0 else 0,
+        "fail_rate": round(fail_count / total * 100, 2) if total > 0 else 0,
+        "interrupt_rate": round(interrupt_count / total * 100, 2) if total > 0 else 0,
         "top_fail": get_top_fail_records(records, limit=10),
         "log_dir": LOG_DIR,
     }
@@ -251,47 +221,25 @@ def normalize_machine_payload(payload):
     data["timestamp"] = data.get("timestamp") or now_text()
     data["server_receive_time"] = now_text()
     data.setdefault("station", "FCT")
-    data.setdefault("line", "")
-    data.setdefault("host_name", "")
-    data.setdefault("ip", "")
-    data.setdefault("model", "")
-    data.setdefault("test_mode", "Online")
     data.setdefault("machine_state", "IDLE")
-    data.setdefault("current_sn", "")
     data.setdefault("current_step", "")
     data.setdefault("instruments", {})
     data.setdefault("measurements", {})
-    data.setdefault("communication", {})
     data.setdefault("alarms", [])
     return data
 
 def get_machine_online_status(payload):
-    receive_time = payload.get("server_receive_time") or payload.get("timestamp") or ""
-    age = seconds_since(receive_time)
+    age = seconds_since(payload.get("server_receive_time") or payload.get("timestamp") or "")
     if age <= ONLINE_SECONDS: return "ONLINE"
     if age <= STALE_SECONDS: return "STALE"
     return "OFFLINE"
 
 def summarize_machine(payload):
     online_status = get_machine_online_status(payload)
-    instruments = payload.get("instruments") or {}
-    offline_instruments = []
-    if isinstance(instruments, dict):
-        for name in instruments:
-            info = instruments.get(name)
-            if isinstance(info, dict):
-                status = str(info.get("status", "")).upper()
-                online = info.get("online", None)
-                if status == "OFFLINE" or online is False:
-                    offline_instruments.append(name)
-
     alarms = payload.get("alarms") or []
     alarm_count = len(alarms) if isinstance(alarms, list) else 1
-
-    if online_status == "OFFLINE": display_state = "OFFLINE"
-    elif online_status == "STALE": display_state = "STALE"
-    elif alarm_count > 0 or len(offline_instruments) > 0: display_state = "WARNING"
-    else: display_state = payload.get("machine_state", "IDLE")
+    display_state = "WARNING" if alarm_count > 0 else payload.get("machine_state", "IDLE")
+    if online_status != "ONLINE": display_state = online_status
 
     return {
         "machine_id": payload.get("machine_id", ""),
@@ -300,6 +248,8 @@ def summarize_machine(payload):
         "model": payload.get("model", ""),
         "test_mode": payload.get("test_mode", ""),
         "current_sn": payload.get("current_sn", ""),
+        
+        # [中枢修复批注: 恢复前端 index.html 所必须的属性，避免 JS 报 undefined 错误]
         "current_step": payload.get("current_step", ""),
         "measurements": payload.get("measurements", {}),
         "alarm_count": alarm_count,
@@ -310,64 +260,37 @@ def build_machine_summary():
     online = sum(1 for m in machines if m.get("online_status") == "ONLINE")
     stale = sum(1 for m in machines if m.get("online_status") == "STALE")
     offline = sum(1 for m in machines if m.get("online_status") == "OFFLINE")
-    machines.sort(key=lambda item: item.get("machine_id", ""))
-    return {"total": len(machines), "online": online, "stale": stale, "offline": offline, "machines": machines}
+    return {"total": len(machines), "online": online, "stale": stale, "offline": offline, "machines": sorted(machines, key=lambda i: i["machine_id"])}
 
 def build_analysis(records):
     stats = build_stats(records)
     model_summary = {}
-    
-    # --- SPC 全量散点矩阵核心逻辑 ---
-    # 扫描获取所有的数值类测试项
     numeric_metrics = {}
+    
     for record in records[:200]: 
         for item in record.get("raw_items", []):
             name = item.get("name") or item.get("raw_name")
             val_str = str(item.get("value", ""))
             try:
-                # 判定是否为数值类型
                 float(val_str)
                 if name not in numeric_metrics:
-                    numeric_metrics[name] = {
-                        "name": name,
-                        "count": 0,
-                        "unit": item.get("unit", ""),
-                        "hilim": item.get("hilim"),
-                        "lolim": item.get("lolim")
-                    }
+                    numeric_metrics[name] = {"name": name, "count": 0, "unit": item.get("unit", ""), "hilim": item.get("hilim"), "lolim": item.get("lolim")}
                 numeric_metrics[name]["count"] += 1
-            except Exception:
-                continue
+            except Exception: continue
 
-    # 将有数据的测项全部返回 (解除数量限制)
-    all_metrics = sorted(numeric_metrics.values(), key=lambda x: x["count"], reverse=True)
-    
+    all_metrics = sorted(numeric_metrics.values(), key=lambda x: x["count"], reverse=True)[:30]
     spc_matrix_data = []
+    
     for metric in all_metrics:
         points = []
         for record in reversed(records[:100]):
             target_item = next((i for i in record.get("raw_items", []) if (i.get("name") or i.get("raw_name")) == metric["name"]), None)
             if target_item:
-                try:
-                    points.append({
-                        "time": record.get("time", "")[-8:], # 仅截取时分秒
-                        "val": float(target_item.get("value")),
-                        "sn": record.get("sn", "Unknown")
-                    })
-                except Exception:
-                    continue
-        
-        # 只保留有有效数据点的测项
+                try: points.append({"time": record.get("time", "")[-8:], "val": float(target_item.get("value")), "sn": record.get("sn", "Unknown")})
+                except: continue
         if len(points) > 0:
-            spc_matrix_data.append({
-                "name": metric["name"],
-                "unit": metric["unit"],
-                "hilim": metric["hilim"],
-                "lolim": metric["lolim"],
-                "points": points
-            })
+            spc_matrix_data.append({"name": metric["name"], "unit": metric["unit"], "hilim": metric["hilim"], "lolim": metric["lolim"], "points": points})
 
-    # 型号汇总统计
     for record in records:
         model = record.get("model") or "UNKNOWN"
         result = normalize_result(record.get("business_result") or record.get("result") or "中断")
@@ -376,16 +299,93 @@ def build_analysis(records):
         model_summary[model][result] += 1
         model_summary[model]["total"] += 1
 
-    top_fail_items = get_top_fail_records(records, limit=20)
-    station_risk = build_station_risk(records) if build_station_risk else []
-    
-    return {
-        "stats": stats, 
-        "top_fail_items": top_fail_items, 
-        "model_summary": model_summary, 
-        "station_risk": station_risk,
-        "spc_matrix": spc_matrix_data # 全量矩阵数据返回
+    return {"stats": stats, "top_fail_items": get_top_fail_records(records, limit=20), "model_summary": model_summary, "spc_matrix": spc_matrix_data}
+
+def build_engineering_insights(records):
+    insights = {
+        "consecutive_fails": [],
+        "cpk_warnings": []
     }
+    
+    station_history = {}
+    for record in records[:50]:
+        station = record.get("station", "UNKNOWN_STATION")
+        if station not in station_history:
+            station_history[station] = []
+        station_history[station].append(record)
+
+    for station, history in station_history.items():
+        recent_3 = history[:3]
+        if len(recent_3) == 3 and all(normalize_result(r.get("business_result") or r.get("result")) == "FAIL" for r in recent_3):
+            fail_sets = [set((i.get("name") or i.get("raw_name")) for i in r.get("fail_items", [])) for r in recent_3]
+            common_fails = set.intersection(*fail_sets) if fail_sets else set()
+            if common_fails:
+                insights["consecutive_fails"].append({
+                    "station": station,
+                    "consecutive_count": 3,
+                    "common_fail_items": list(common_fails),
+                    "action": "HALT_RECOMMENDED",
+                    "reason": "检测到同一机台相同测项连续3次FAIL，存在极高治具探针损坏或线缆接触不良风险。"
+                })
+
+    metrics_data = {}
+    pass_records = [r for r in records[:100] if normalize_result(r.get("business_result") or r.get("result")) == "PASS"]
+    
+    for record in pass_records:
+        for item in record.get("raw_items", []):
+            name = item.get("name") or item.get("raw_name")
+            val_str = str(item.get("value", ""))
+            hilim_str = str(item.get("hilim", ""))
+            lolim_str = str(item.get("lolim", ""))
+            
+            try:
+                val = float(val_str)
+                hi = float(hilim_str) if hilim_str else None
+                lo = float(lolim_str) if lolim_str else None
+                
+                if hi is not None and lo is not None and hi > lo:
+                    if name not in metrics_data:
+                        metrics_data[name] = {"values": [], "hi": hi, "lo": lo}
+                    metrics_data[name]["values"].append(val)
+            except Exception:
+                continue
+
+    for name, data in metrics_data.items():
+        vals = data["values"]
+        if len(vals) >= 10:
+            mean = sum(vals) / len(vals)
+            variance = sum((x - mean) ** 2 for x in vals) / (len(vals) - 1)
+            std_dev = math.sqrt(variance)
+            
+            if std_dev > 0:
+                cpu = (data["hi"] - mean) / (3 * std_dev)
+                cpl = (mean - data["lo"]) / (3 * std_dev)
+                cpk = min(cpu, cpl)
+                
+                if cpk < 1.33:
+                    insights["cpk_warnings"].append({
+                        "item": name,
+                        "sample_size": len(vals),
+                        "cpk": round(cpk, 3),
+                        "mean": round(mean, 4),
+                        "std_dev": round(std_dev, 4),
+                        "risk_level": "CRITICAL" if cpk < 1.0 else "WARNING"
+                    })
+                    
+    insights["cpk_warnings"].sort(key=lambda x: x["cpk"])
+    return insights
+
+def load_telemetry_cache():
+    global TELEMETRY_CACHE
+    if os.path.exists(CACHE_FILE):
+        try:
+            with open(CACHE_FILE, "r", encoding="utf-8") as f: TELEMETRY_CACHE = json.load(f)
+        except Exception: TELEMETRY_CACHE = {}
+
+def save_telemetry_cache():
+    try:
+        with open(CACHE_FILE, "w", encoding="utf-8") as f: json.dump(TELEMETRY_CACHE, f, ensure_ascii=False)
+    except Exception: pass
 
 @app.route("/")
 @app.route("/dashboard")
@@ -400,24 +400,19 @@ def api_health(): return jsonify({"ok": True, "server_time": now_text(), "parser
 def api_all(): return jsonify(safe_load_records())
 
 @app.route("/api/recent")
-def api_recent():
-    limit = int(request.args.get("limit", "50"))
-    return jsonify(safe_load_records()[:limit])
+def api_recent(): return jsonify(safe_load_records()[:int(request.args.get("limit", "50"))])
 
 @app.route("/api/search")
 def api_search():
     sn = request.args.get("sn", "")
-    records = safe_load_records()
-    record = find_latest_record_by_sn(records, sn) if find_latest_record_by_sn else None
+    record = find_latest_record_by_sn(safe_load_records(), sn) if find_latest_record_by_sn else None
     return jsonify({"ok": bool(record), "record": record, "message": "" if record else "未找到"})
 
 @app.route("/api/record_detail")
 def api_record_detail():
-    records = safe_load_records()
     index = request.args.get("index", "")
     if index != "":
-        try:
-            return jsonify({"ok": True, "record": records[int(index)]})
+        try: return jsonify({"ok": True, "record": safe_load_records()[int(index)]})
         except: pass
     return jsonify({"ok": False, "message": "未找到记录"})
 
@@ -430,10 +425,15 @@ def api_stats(): return jsonify(build_stats(safe_load_records()))
 @app.route("/api/analysis")
 def api_analysis(): return jsonify(build_analysis(safe_load_records()))
 
+@app.route("/api/engineering_insights")
+def api_engineering_insights():
+    return jsonify(build_engineering_insights(safe_load_records()))
+
 @app.route("/api/telemetry/push", methods=["POST"])
 def api_telemetry_push():
     data = normalize_machine_payload(request.get_json(silent=True))
     TELEMETRY_CACHE[data["machine_id"]] = data
+    save_telemetry_cache()
     return jsonify({"ok": True})
 
 @app.route("/api/telemetry/latest")
@@ -441,4 +441,5 @@ def api_telemetry_latest(): return jsonify(build_machine_summary())
 
 if __name__ == "__main__":
     os.makedirs(LOG_DIR, exist_ok=True)
+    load_telemetry_cache()
     app.run(host="0.0.0.0", port=5000, debug=True)
