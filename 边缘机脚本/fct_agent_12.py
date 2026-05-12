@@ -22,7 +22,7 @@ SERVER_PORT = "5000"  #服务器端口
 MACHINE_ID = "FCT_STATION_12"
 
 LOCAL_LOG_DIR = r"D:\Results"
-ARCHIVE_DIR = r"#######"  #服务器保存路径
+ARCHIVE_DIR = r"D:\FTS\Logs\Uploaded_Archive"
 POLL_INTERVAL = 5
 
 URL_UPLOAD = f"http://{SERVER_IP}:{SERVER_PORT}/api/upload_log"
