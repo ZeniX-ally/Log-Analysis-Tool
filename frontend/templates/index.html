@@ -62,19 +62,25 @@
         }
 
         /* ==========================================
-           [靶向修复 1]: 悬浮引擎发光边界裁切修复
+           [中枢核心升级]: 悬浮白光光晕引擎 (防裁切版)
         ========================================== */
         .hover-invert-float {
+            /* 预留光晕占位，确保过渡动画如丝般顺滑 */
+            filter: invert(0) hue-rotate(0deg) drop-shadow(0 0px 0px rgba(255, 255, 255, 0));
             transition: transform 0.4s var(--easing-physics), 
-                        filter 0.4s var(--easing-physics); /* 废弃容易产生渲染 Bug 的 box-shadow 过渡 */
+                        filter 0.4s var(--easing-physics);
             will-change: transform, filter;
             position: relative;
         }
+        
         .hover-invert-float:hover {
             transform: translateY(-8px);
-            /* 将物理阴影转为 drop-shadow 移入滤镜链内部，完美解决边框裁切。
-               同时将扩散半径缩减至 24px，透明度降至 0.2，实现高级内敛的弱光泽 */
-            filter: invert(1) hue-rotate(180deg) drop-shadow(0 12px 24px rgba(0, 0, 0, 0.2));
+            /* 魔法链路重构：
+               1. invert(1) + hue-rotate(180deg) 负责完美的卡片反色。
+               2. 在反色之后，叠加 drop-shadow 投射大半径的纯白光晕 (255,255,255)。
+               3. rgba(255,255,255,0.45) 提供了恰到好处的散射质感，完美复原你的设计图！
+            */
+            filter: invert(1) hue-rotate(180deg) drop-shadow(0 20px 40px rgba(255, 255, 255, 0.45));
             z-index: 20; 
         }
 
