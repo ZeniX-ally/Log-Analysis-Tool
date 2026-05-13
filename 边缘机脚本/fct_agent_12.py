@@ -16,8 +16,12 @@ os.environ['http_proxy'] = ''
 os.environ['https_proxy'] = ''
 os.environ['NO_PROXY'] = '*'
 
-SERVER_IP = "172.28.x.x"  #服务器IP
-SERVER_PORT = "5000"  #服务器端口
+# [修改对比批注]
+# 原内容: SERVER_IP = "172.28.x.x"
+# 修改逻辑: 指向 Ubuntu 服务器。
+SERVER_IP = "192.168.x.x"  # <--- 请在此处输入 Ubuntu 服务器的实际 IP [修改点]
+
+SERVER_PORT = "5000"  # 服务器端口
 
 MACHINE_ID = "FCT_STATION_12"
 
@@ -28,7 +32,7 @@ POLL_INTERVAL = 5
 URL_UPLOAD = f"http://{SERVER_IP}:{SERVER_PORT}/api/upload_log"
 URL_TELEMETRY = f"http://{SERVER_IP}:{SERVER_PORT}/api/telemetry/push"
 
-import os
+# ... (print_banner, now_text, ensure_dir 等业务逻辑保持原样) ...
 
 def print_banner():
     os.system("color 0A")

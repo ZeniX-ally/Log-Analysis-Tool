@@ -248,13 +248,13 @@
 <body>
 <div class="app">
     <aside class="sidebar surface-panel">
-        <div class="brand text-truncate">NEXUS FCT</div>
-        <div class="brand-sub">ENGINEERING HUB</div>
+        <div class="brand text-truncate">Monolith</div>
+        <div class="brand-sub">黑碑</div>
         
-        <div class="nav-item active" onclick="switchPanel('overviewPanel', this)">效能监控大盘</div>
-        <div class="nav-item" onclick="switchPanel('failCenterPanel', this)">异常隔离沙箱</div>
-        <div class="nav-item" onclick="switchPanel('spcPanel', this)">SPC 统计矩阵</div>
-        <div class="nav-item" onclick="switchPanel('machinePanel', this)">物理链路遥测</div>
+        <div class="nav-item active" onclick="switchPanel('overviewPanel', this)">效能监控</div>
+        <div class="nav-item" onclick="switchPanel('failCenterPanel', this)">日志检索</div>
+        <div class="nav-item" onclick="switchPanel('spcPanel', this)">统计矩阵</div>
+        <div class="nav-item" onclick="switchPanel('machinePanel', this)">机台遥测</div>
         
         <div style="margin-top: auto; color: var(--text-muted); font-size: 13px; font-weight: 500; font-family: var(--font-num); line-height: 2;">
             <div style="color: #fff; margin-bottom: 8px; font-family: var(--font-ui); font-weight: 700;">Telemetry Status</div>
@@ -285,7 +285,7 @@
                     <div id="paretoChart" class="chart-container"></div>
                 </div>
                 <div class="box surface-panel hover-invert-float">
-                    <div class="box-title text-truncate">PROCESS DRIFT / CPK</div>
+                    <div class="box-title text-truncate">CPK预测防治图表</div>
                     <div id="cpkChart" class="chart-container"></div>
                 </div>
             </div>
@@ -373,10 +373,10 @@ function switchPanel(panelId, el) {
     document.getElementById("pageTitle").innerText = el.innerText; 
     
     const subs = {
-        'overviewPanel': 'SYS.MAIN_DASHBOARD',
-        'failCenterPanel': 'SYS.FAULT_ISOLATION',
-        'spcPanel': 'SYS.PROCESS_CONTROL // UNBOUNDED GRID',
-        'machinePanel': 'SYS.NODE_TELEMETRY'
+        'overviewPanel': '',
+        'failCenterPanel': '',
+        'spcPanel': '',
+        'machinePanel': ''
     };
     document.getElementById("pageSub").innerText = subs[panelId];
 

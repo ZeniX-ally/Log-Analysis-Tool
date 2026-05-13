@@ -8,6 +8,7 @@ import math
 from datetime import datetime
 import functools # [优化点新增]
 import time # [优化点新增]
+from pathlib import Path # [新增] 用于跨平台路径处理
 
 try:
     from flask import Flask, jsonify, render_template, request, Response
@@ -22,11 +23,12 @@ PROJECT_ROOT = os.path.abspath(os.path.join(BASE_DIR, ".."))
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
-TEMPLATE_DIR = os.path.join(PROJECT_ROOT, "frontend", "templates")
-STATIC_DIR = os.path.join(PROJECT_ROOT, "frontend", "static")
-LOG_DIR = os.path.join(PROJECT_ROOT, "data", "logs")
-
-CACHE_FILE = os.path.join(PROJECT_ROOT, "data", "telemetry_cache.json")
+# [修改点] 适配 Ubuntu 路径逻辑
+_P = Path(PROJECT_ROOT)
+TEMPLATE_DIR = str(_P / "frontend" / "templates")
+STATIC_DIR = str(_P / "frontend" / "static")
+LOG_DIR = str(_P / "data" / "logs")
+CACHE_FILE = str(_P / "data" / "telemetry_cache.json")
 
 ONLINE_SECONDS = 5
 STALE_SECONDS = 30
@@ -132,7 +134,7 @@ def get_dir_mtime(path):
     except Exception:
         return time.time()
 
-# 使用 lru_cache 缓存解析结果。通过传入目录修改时间，当有新文件加入导致目录mtime改变时，缓存自动失效重建。
+# 使用 lru_cache 缓存解析结果。
 @functools.lru_cache(maxsize=1)
 def _cached_load_records(dir_mtime):
     if load_all_fct_records is None:
@@ -148,7 +150,6 @@ def safe_load_records():
     """代理函数，将目录状态传入缓存系统"""
     os.makedirs(LOG_DIR, exist_ok=True)
     current_mtime = get_dir_mtime(LOG_DIR)
-    # [性能飞跃] 如果日志文件夹没有新增文件，这里会以极速直接返回内存中已解析好的对象引用
     return _cached_load_records(current_mtime)
 # ==============================
 
@@ -287,13 +288,11 @@ def build_machine_summary():
     return {"total": len(machines), "online": online, "stale": stale, "offline": offline, "machines": sorted(machines, key=lambda i: i["machine_id"])}
 
 def build_analysis(records):
-    # [优化点 2] 限制图表全量分析扫描范围，最多扫描最近的 2000 条记录防止过载卡顿
     recent_records = records[:2000]
     stats = build_stats(recent_records)
     model_summary = {}
     numeric_metrics = {}
     
-    # 抽取最近 200 个记录作为基础度量元
     for record in recent_records[:200]: 
         for item in record.get("raw_items", []):
             name = item.get("name") or item.get("raw_name")
@@ -310,7 +309,6 @@ def build_analysis(records):
     
     for metric in all_metrics:
         points = []
-        # 只生成最近 100 个点，减轻前端 Chart 渲染压力
         for record in reversed(recent_records[:100]):
             target_item = next((i for i in record.get("raw_items", []) if (i.get("name") or i.get("raw_name")) == metric["name"]), None)
             if target_item:
@@ -336,7 +334,7 @@ def build_engineering_insights(records):
     }
     
     station_history = {}
-    for record in records[:100]: # 增大了扫描范围但加以限制
+    for record in records[:100]:
         station = record.get("station", "UNKNOWN_STATION")
         if station not in station_history:
             station_history[station] = []
@@ -470,4 +468,5 @@ def api_telemetry_latest(): return jsonify(build_machine_summary())
 if __name__ == "__main__":
     os.makedirs(LOG_DIR, exist_ok=True)
     load_telemetry_cache()
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    # [修改点] 开启多线程并关闭调试模式，优化 Ubuntu 服务器响应性
+    app.run(host="0.0.0.0", port=5000, debug=False, threaded=True)
