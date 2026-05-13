@@ -6,9 +6,11 @@ import sys
 import json
 import math
 from datetime import datetime
+import functools # [优化点新增]
+import time # [优化点新增]
 
 try:
-    from flask import Flask, jsonify, render_template, request
+    from flask import Flask, jsonify, render_template, request, Response
 except ImportError as exc:
     raise ImportError(
         "Flask is required to run this application. Install it with 'pip install Flask'."
@@ -39,6 +41,9 @@ app = Flask(
     static_folder=STATIC_DIR if os.path.isdir(STATIC_DIR) else None,
 )
 
+# [优化点 3] 覆盖 Flask 原生的 jsonify 行为，使用紧凑型序列化，减少网络 I/O 体积
+app.config['JSONIFY_PRETTYPRINT_REGULAR'] = False 
+
 try:
     from backend.parser.fct_parser import load_all_fct_records
     from backend.parser.fct_parser import find_latest_record_by_sn
@@ -58,7 +63,6 @@ try:
     from backend.rules.station_risk_rules import build_station_risk
 except Exception:
     build_station_risk = None
-
 
 def now_text():
     return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -117,15 +121,37 @@ def get_record_sort_timestamp(record):
 def sort_records_latest_first(records):
     return sorted(records, key=get_record_sort_timestamp, reverse=True)
 
-def safe_load_records():
+
+# ==============================
+# [优化点 1 核心] 目录状态缓存控制
+# ==============================
+def get_dir_mtime(path):
+    """获取目录的最后修改时间（秒级时间戳），用于判断是否有新日志文件产生"""
+    try:
+        return os.stat(path).st_mtime
+    except Exception:
+        return time.time()
+
+# 使用 lru_cache 缓存解析结果。通过传入目录修改时间，当有新文件加入导致目录mtime改变时，缓存自动失效重建。
+@functools.lru_cache(maxsize=1)
+def _cached_load_records(dir_mtime):
     if load_all_fct_records is None:
         return []
-    os.makedirs(LOG_DIR, exist_ok=True)
     try:
         records = load_all_fct_records(LOG_DIR)
         return sort_records_latest_first(records)
     except Exception as exc:
+        print(f"Error loading records: {exc}")
         return []
+
+def safe_load_records():
+    """代理函数，将目录状态传入缓存系统"""
+    os.makedirs(LOG_DIR, exist_ok=True)
+    current_mtime = get_dir_mtime(LOG_DIR)
+    # [性能飞跃] 如果日志文件夹没有新增文件，这里会以极速直接返回内存中已解析好的对象引用
+    return _cached_load_records(current_mtime)
+# ==============================
+
 
 def normalize_result(result):
     raw = str(result or "").strip()
@@ -248,8 +274,6 @@ def summarize_machine(payload):
         "model": payload.get("model", ""),
         "test_mode": payload.get("test_mode", ""),
         "current_sn": payload.get("current_sn", ""),
-        
-        # [中枢修复批注: 恢复前端 index.html 所必须的属性，避免 JS 报 undefined 错误]
         "current_step": payload.get("current_step", ""),
         "measurements": payload.get("measurements", {}),
         "alarm_count": alarm_count,
@@ -263,11 +287,14 @@ def build_machine_summary():
     return {"total": len(machines), "online": online, "stale": stale, "offline": offline, "machines": sorted(machines, key=lambda i: i["machine_id"])}
 
 def build_analysis(records):
-    stats = build_stats(records)
+    # [优化点 2] 限制图表全量分析扫描范围，最多扫描最近的 2000 条记录防止过载卡顿
+    recent_records = records[:2000]
+    stats = build_stats(recent_records)
     model_summary = {}
     numeric_metrics = {}
     
-    for record in records[:200]: 
+    # 抽取最近 200 个记录作为基础度量元
+    for record in recent_records[:200]: 
         for item in record.get("raw_items", []):
             name = item.get("name") or item.get("raw_name")
             val_str = str(item.get("value", ""))
@@ -283,7 +310,8 @@ def build_analysis(records):
     
     for metric in all_metrics:
         points = []
-        for record in reversed(records[:100]):
+        # 只生成最近 100 个点，减轻前端 Chart 渲染压力
+        for record in reversed(recent_records[:100]):
             target_item = next((i for i in record.get("raw_items", []) if (i.get("name") or i.get("raw_name")) == metric["name"]), None)
             if target_item:
                 try: points.append({"time": record.get("time", "")[-8:], "val": float(target_item.get("value")), "sn": record.get("sn", "Unknown")})
@@ -291,7 +319,7 @@ def build_analysis(records):
         if len(points) > 0:
             spc_matrix_data.append({"name": metric["name"], "unit": metric["unit"], "hilim": metric["hilim"], "lolim": metric["lolim"], "points": points})
 
-    for record in records:
+    for record in recent_records:
         model = record.get("model") or "UNKNOWN"
         result = normalize_result(record.get("business_result") or record.get("result") or "中断")
         if model not in model_summary:
@@ -299,7 +327,7 @@ def build_analysis(records):
         model_summary[model][result] += 1
         model_summary[model]["total"] += 1
 
-    return {"stats": stats, "top_fail_items": get_top_fail_records(records, limit=20), "model_summary": model_summary, "spc_matrix": spc_matrix_data}
+    return {"stats": stats, "top_fail_items": get_top_fail_records(recent_records, limit=20), "model_summary": model_summary, "spc_matrix": spc_matrix_data}
 
 def build_engineering_insights(records):
     insights = {
@@ -308,7 +336,7 @@ def build_engineering_insights(records):
     }
     
     station_history = {}
-    for record in records[:50]:
+    for record in records[:100]: # 增大了扫描范围但加以限制
         station = record.get("station", "UNKNOWN_STATION")
         if station not in station_history:
             station_history[station] = []
@@ -329,7 +357,7 @@ def build_engineering_insights(records):
                 })
 
     metrics_data = {}
-    pass_records = [r for r in records[:100] if normalize_result(r.get("business_result") or r.get("result")) == "PASS"]
+    pass_records = [r for r in records[:200] if normalize_result(r.get("business_result") or r.get("result")) == "PASS"]
     
     for record in pass_records:
         for item in record.get("raw_items", []):
