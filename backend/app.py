@@ -29,6 +29,7 @@ TEMPLATE_DIR = str(_P / "frontend" / "templates")
 STATIC_DIR = str(_P / "frontend" / "static")
 LOG_DIR = str(_P / "data" / "logs")
 CACHE_FILE = str(_P / "data" / "telemetry_cache.json")
+SPEC_CACHE_FILE = str(_P / "data" / "spec_cache.json")
 
 ONLINE_SECONDS = 5
 STALE_SECONDS = 30
@@ -65,6 +66,34 @@ try:
     from backend.rules.station_risk_rules import build_station_risk
 except Exception:
     build_station_risk = None
+
+try:
+    from backend.rules.limit_compare import compare_limits, load_spec
+    LIMIT_COMPARE_AVAILABLE = True
+except Exception:
+    compare_limits = None
+    load_spec = None
+    LIMIT_COMPARE_AVAILABLE = False
+
+# [新增] 数据库模块导入
+try:
+    from backend.database import (
+        init_db, save_telemetry, get_telemetry_summary,
+        save_log_records_batch, get_logs_by_sn, get_log_detail,
+        get_top_fail as db_get_top_fail, update_fail_statistics
+    )
+    DB_AVAILABLE = True
+except Exception as _db_exc:
+    init_db = None
+    save_telemetry = None
+    get_telemetry_summary = None
+    save_log_records_batch = None
+    get_logs_by_sn = None
+    get_log_detail = None
+    db_get_top_fail = None
+    update_fail_statistics = None
+    DB_AVAILABLE = False
+    DB_IMPORT_ERROR = str(_db_exc)
 
 def now_text():
     return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -151,6 +180,44 @@ def safe_load_records():
     os.makedirs(LOG_DIR, exist_ok=True)
     current_mtime = get_dir_mtime(LOG_DIR)
     return _cached_load_records(current_mtime)
+# ==============================
+
+
+# ==============================
+# [新增] DB 同步辅助函数
+# ==============================
+def sync_records_to_db(records=None):
+    """将当前内存中的解析记录同步到 SQLite DB。
+    可传入 records 列表；若不传则从 safe_load_records() 获取。
+    返回 (new_count, skip_count, error)。
+    """
+    if not DB_AVAILABLE or save_log_records_batch is None:
+        return 0, 0, "database module not available"
+    try:
+        if records is None:
+            records = safe_load_records()
+        new_count, skip_count = save_log_records_batch(records)
+        return new_count, skip_count, None
+    except Exception as exc:
+        return 0, 0, str(exc)
+
+def get_db_sync_status():
+    """返回 DB 同步状态（当前日志文件数 vs DB 记录数）"""
+    if not DB_AVAILABLE:
+        return {"available": False, "error": DB_IMPORT_ERROR if 'DB_IMPORT_ERROR' in dir() else "unknown"}
+    try:
+        import sqlite3
+        records = safe_load_records()
+        db_path = os.path.join(PROJECT_ROOT, "data", "log_analysis.db")
+        if not os.path.exists(db_path):
+            return {"available": True, "file_count": len(records), "db_count": 0, "db_path": db_path}
+        conn = sqlite3.connect(db_path)
+        row = conn.execute("SELECT COUNT(*) as cnt FROM log_files").fetchone()
+        db_count = row[0] if row else 0
+        conn.close()
+        return {"available": True, "file_count": len(records), "db_count": db_count, "db_path": db_path}
+    except Exception as exc:
+        return {"available": True, "file_count": len(safe_load_records()), "db_count": 0, "error": str(exc)}
 # ==============================
 
 
@@ -455,18 +522,141 @@ def api_analysis(): return jsonify(build_analysis(safe_load_records()))
 def api_engineering_insights():
     return jsonify(build_engineering_insights(safe_load_records()))
 
+@app.route("/api/limit/compare")
+def api_limit_compare():
+    """比对同一工站下所有测项限值一致性。支持 ?use_spec=true 以 spec 为基准"""
+    if not LIMIT_COMPARE_AVAILABLE or compare_limits is None:
+        return jsonify({"ok": False, "message": "limit_compare module not available"})
+    use_spec = request.args.get("use_spec", "").lower() == "true"
+    spec = None
+    if use_spec and load_spec:
+        spec = load_spec(SPEC_CACHE_FILE)
+    records = safe_load_records()
+    result = compare_limits(records, spec=spec)
+    return jsonify({"ok": True, "data": result})
+
+@app.route("/api/spec/current")
+def api_spec_current():
+    """查询当前已上传的规格书信息"""
+    if not os.path.exists(SPEC_CACHE_FILE):
+        return jsonify({"ok": True, "uploaded": False, "spec": None})
+    try:
+        with open(SPEC_CACHE_FILE, "r", encoding="utf-8") as f:
+            spec = json.load(f)
+        return jsonify({
+            "ok": True, "uploaded": True,
+            "spec": {
+                "spec_name": spec.get("spec_name", "unknown"),
+                "uploaded_at": spec.get("uploaded_at", ""),
+                "item_count": len(spec.get("items", {})),
+            }
+        })
+    except Exception:
+        return jsonify({"ok": True, "uploaded": False, "spec": None})
+
+@app.route("/api/spec/upload", methods=["POST"])
+def api_spec_upload():
+    """上传规格书 JSON。格式: {"spec_name": "...", "items": {"item_name": {"lo": "...", "hi": "..."}}}"""
+    data = request.get_json(silent=True)
+    if not data or "items" not in data:
+        return jsonify({"ok": False, "message": "缺少 items 字段，格式: {\"items\": {\"测项名\": {\"lo\": \"...\", \"hi\": \"...\"}}}"})
+    data["uploaded_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    data.setdefault("spec_name", f"spec_{datetime.now().strftime('%Y%m%d_%H%M%S')}")
+    try:
+        os.makedirs(os.path.dirname(SPEC_CACHE_FILE), exist_ok=True)
+        with open(SPEC_CACHE_FILE, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+        return jsonify({"ok": True, "message": "规格书上传成功", "spec_name": data["spec_name"], "item_count": len(data["items"])})
+    except Exception as e:
+        return jsonify({"ok": False, "message": f"保存失败: {e}"})
+
 @app.route("/api/telemetry/push", methods=["POST"])
 def api_telemetry_push():
     data = normalize_machine_payload(request.get_json(silent=True))
     TELEMETRY_CACHE[data["machine_id"]] = data
     save_telemetry_cache()
+    # [新增] 双写 DB：遥测数据同时写入 SQLite
+    if DB_AVAILABLE and save_telemetry:
+        try:
+            save_telemetry(data["machine_id"], data)
+        except Exception:
+            pass  # DB 写入失败不影响主流程
     return jsonify({"ok": True})
 
 @app.route("/api/telemetry/latest")
 def api_telemetry_latest(): return jsonify(build_machine_summary())
 
+# ============================================================
+# [新增] 数据库查询端点 — 不替代原有 API，作为并行通道
+# ============================================================
+
+@app.route("/api/db/status")
+def api_db_status():
+    """数据库同步状态查询"""
+    return jsonify(get_db_sync_status())
+
+@app.route("/api/db/sync", methods=["POST"])
+def api_db_sync():
+    """手动触发日志记录同步到 DB"""
+    new_count, skip_count, error = sync_records_to_db()
+    if error:
+        return jsonify({"ok": False, "error": error, "new": new_count, "skip": skip_count})
+    return jsonify({"ok": True, "new": new_count, "skip": skip_count})
+
+@app.route("/api/db/search")
+def api_db_search():
+    """从 DB 按 SN 查询日志"""
+    if not DB_AVAILABLE:
+        return jsonify({"ok": False, "message": "Database not available"})
+    sn = request.args.get("sn", "")
+    if not sn:
+        return jsonify({"ok": False, "message": "Missing sn parameter"})
+    logs = get_logs_by_sn(sn) if get_logs_by_sn else []
+    return jsonify({"ok": True, "logs": logs, "count": len(logs)})
+
+@app.route("/api/db/log_detail")
+def api_db_log_detail():
+    """从 DB 查询单条日志详情（含所有 test_items）"""
+    if not DB_AVAILABLE:
+        return jsonify({"ok": False, "message": "Database not available"})
+    log_id = request.args.get("id", "")
+    if not log_id:
+        return jsonify({"ok": False, "message": "Missing id parameter"})
+    try:
+        detail = get_log_detail(int(log_id)) if get_log_detail else None
+    except Exception:
+        detail = None
+    if detail:
+        return jsonify({"ok": True, "record": detail})
+    return jsonify({"ok": False, "message": "Not found"})
+
+@app.route("/api/db/top_fail")
+def api_db_top_fail():
+    """从 DB 查询 Top Fail 统计"""
+    if not DB_AVAILABLE:
+        return jsonify({"ok": False, "message": "Database not available"})
+    limit = int(request.args.get("limit", "10"))
+    station = request.args.get("station", None)
+    result = db_get_top_fail(station=station, limit=limit) if db_get_top_fail else []
+    return jsonify({"ok": True, "top_fail": result})
+
+@app.route("/api/db/telemetry")
+def api_db_telemetry():
+    """从 DB 获取机台遥测摘要"""
+    if not DB_AVAILABLE or get_telemetry_summary is None:
+        return jsonify({"ok": False, "message": "Database not available"})
+    return jsonify({"ok": True, "data": get_telemetry_summary()})
+# ============================================================
+
 if __name__ == "__main__":
     os.makedirs(LOG_DIR, exist_ok=True)
     load_telemetry_cache()
+    # [新增] 初始化数据库
+    if DB_AVAILABLE and init_db:
+        try:
+            init_db()
+            print(f"[DB] Database initialized at {os.path.join(PROJECT_ROOT, 'data', 'log_analysis.db')}")
+        except Exception as _e:
+            print(f"[DB] Init failed: {_e}")
     # [修改点] 开启多线程并关闭调试模式，优化 Ubuntu 服务器响应性
     app.run(host="0.0.0.0", port=5000, debug=False, threaded=True)

@@ -5,12 +5,12 @@ import datetime
 import xml.etree.ElementTree as ET
 
 try:
-    from knowledge.test_context import detect_instrument
-    from knowledge.test_context import get_instrument_device
-    from knowledge.test_context import get_engineering_hint
-    from knowledge.test_context import extract_section
-    from knowledge.test_context import extract_signal
-    from knowledge.test_context import build_nominal_range
+    from backend.knowledge.test_context import detect_instrument
+    from backend.knowledge.test_context import get_instrument_device
+    from backend.knowledge.test_context import get_engineering_hint
+    from backend.knowledge.test_context import extract_section
+    from backend.knowledge.test_context import extract_signal
+    from backend.knowledge.test_context import build_nominal_range
 except Exception:
     def detect_instrument(test_name):
         text = str(test_name or "").upper()
