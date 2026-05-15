@@ -325,6 +325,9 @@ def get_station_from_xml(root):
 
     tester = get_attr(factory, "TESTER", "Tester", "tester")
     product_name = get_attr(product, "NAME", "Name", "name")
+    factory_name = get_attr(factory, "NAME", "Name", "name")
+    line = get_attr(factory, "LINE", "Line", "line")
+    user = get_attr(factory, "USER", "User", "user")
 
     station = "FCT"
     if tester:
@@ -332,7 +335,7 @@ def get_station_from_xml(root):
         if parts:
             station = parts[-1] or "FCT"
 
-    return station, tester, product_name
+    return station, tester, product_name, factory_name, line, user
 
 
 def build_sn_aliases(sn):
@@ -412,7 +415,7 @@ def parse_fct_xml(xml_file_path, log_dir=None):
         dut_status_raw = get_attr(dut, "STATUS", "Status", "status")
         raw_result = dut_status_raw or panel_status_raw
 
-        station, tester, product_name = get_station_from_xml(root)
+        station, tester, product_name, factory_name, line, user = get_station_from_xml(root)
         raw_items = parse_test_nodes(root, parent_map)
 
         total_tests = len(raw_items)
@@ -454,10 +457,16 @@ def parse_fct_xml(xml_file_path, log_dir=None):
 
         test_time = dut_time or panel_time or batch_time or file_time
 
+        panel_testtime = get_attr(panel, "TESTTIME", "TestTime", "testtime")
+        dut_testtime = get_attr(dut, "TESTTIME", "TestTime", "testtime")
+
         return {
             "sn": sn,
             "sn_aliases": build_sn_aliases(sn),
             "model": model,
+            "factory": factory_name,
+            "line": line,
+            "user": user,
             "test_mode": meta.get("test_mode", "Unknown"),
             "date_folder": meta.get("date_folder", ""),
             "relative_path": meta.get("relative_path", ""),
@@ -479,6 +488,8 @@ def parse_fct_xml(xml_file_path, log_dir=None):
             "panel_time": panel_time,
             "dut_time": dut_time,
             "test_time": test_time,
+            "panel_testtime": panel_testtime,
+            "dut_testtime": dut_testtime,
             "source_file": source_file,
             "source_path": xml_file_path,
             "file_mtime": file_time,

@@ -1,0 +1,21 @@
+[Unit]
+Description=NEXUS FCT Log Analysis Dashboard
+Documentation=https://github.com/nexus-fct
+After=network.target
+
+[Service]
+Type=simple
+User=nexus
+Group=nexus
+WorkingDirectory=/opt/nexus-fct
+Environment="PATH=/opt/nexus-fct/venv/bin"
+ExecStart=/opt/nexus-fct/venv/bin/gunicorn --workers 4 --timeout 120 --bind 0.0.0.0:59488 "backend.app:app"
+Restart=always
+RestartSec=5
+StartLimitIntervalSec=60
+StartLimitBurst=3
+StandardOutput=append:/var/log/nexus-fct/access.log
+StandardError=append:/var/log/nexus-fct/error.log
+
+[Install]
+WantedBy=multi-user.target

@@ -18,7 +18,7 @@ if %errorlevel% neq 0 (
 
 :: Install dependencies
 echo [1/4] Installing Python dependencies...
-pip install flask rich psutil -q
+:: pip install flask rich psutil -q
 if %errorlevel% neq 0 (
     echo [ERROR] Dependency installation failed
     pause

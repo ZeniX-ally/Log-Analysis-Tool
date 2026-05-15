@@ -53,14 +53,17 @@ def resolve_model_group(model, spec):
     return model
 
 
-def build_station_profile(records, max_records_per_station=200):
+def build_station_profile(records, max_records_per_station=200, model_filter=None):
     """按工站聚合限值信息，每个工站取最新一条记录的代表性限值"""
     station_profiles = {}
     for record in records:
+        model = find_model_in_record(record)
+        if model_filter and model != model_filter:
+            continue
         station = record.get("station") or "UNKNOWN"
         if station not in station_profiles:
             station_profiles[station] = {
-                "model": find_model_in_record(record),
+                "model": model,
                 "items": {}
             }
         if len(station_profiles[station]["items"]) >= 200:
@@ -83,13 +86,14 @@ def build_station_profile(records, max_records_per_station=200):
     return station_profiles
 
 
-def build_machine_matrix(records, max_records_per_station=200):
+def build_machine_matrix(records, max_records_per_station=200, model_filter=None):
     """
     机台间限值对比矩阵。
     对每个测项，列出每台机台的限值，标记哪些机台一致、哪些不同。
+    支持 model_filter 参数只对比同型号机台。
     """
     now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    profiles = build_station_profile(records, max_records_per_station)
+    profiles = build_station_profile(records, max_records_per_station, model_filter=model_filter)
 
     stations = sorted(profiles.keys())
     station_models = {s: profiles[s]["model"] for s in stations}
@@ -293,9 +297,22 @@ def build_spec_compliance_matrix(records, spec, max_records_per_station=200):
     }
 
 
-def compare_limits(records, max_records_per_station=200, spec=None):
-    """统一入口：根据是否有 spec 返回不同的对比结果"""
+def compare_limits(records, max_records_per_station=200, spec=None, model_filter=None):
+    """统一入口：根据是否有 spec 返回不同的对比结果；支持按型号过滤"""
     if spec:
         return build_spec_compliance_matrix(records, spec, max_records_per_station)
     else:
-        return build_machine_matrix(records, max_records_per_station)
+        result = build_machine_matrix(records, max_records_per_station, model_filter=model_filter)
+        # 标记当前过滤的型号
+        result["model_selected"] = model_filter or "__all__"
+        return result
+
+
+def list_available_models(records):
+    """扫描所有记录，返回去重排序的 PCBA 型号列表"""
+    models = set()
+    for record in records:
+        m = find_model_in_record(record)
+        if m and m != "UNKNOWN":
+            models.add(m)
+    return sorted(models)

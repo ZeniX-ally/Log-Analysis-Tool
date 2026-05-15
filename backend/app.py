@@ -75,12 +75,22 @@ except Exception:
     build_top_fail = None
 
 try:
-    from backend.rules.limit_compare import compare_limits, load_spec
+    from backend.rules.limit_compare import compare_limits, list_available_models
     LIMIT_COMPARE_AVAILABLE = True
 except Exception:
     compare_limits = None
-    load_spec = None
+    list_available_models = None
     LIMIT_COMPARE_AVAILABLE = False
+
+try:
+    from backend.utils.feishu_bot import send_message, push_alert, push_daily_report, load_webhook_url
+    FEISHU_AVAILABLE = True
+except Exception:
+    send_message = None
+    push_alert = None
+    push_daily_report = None
+    load_webhook_url = None
+    FEISHU_AVAILABLE = False
 
 try:
     from backend.database import (
@@ -240,8 +250,9 @@ def normalize_result(result):
     return "中断"
 
 def fallback_build_top_fail(records, limit=10):
+    sample = records[:2000]
     counter = {}
-    for record in records:
+    for record in sample:
         fail_items = record.get("fail_items", []) or []
         for item in fail_items:
             name = item.get("name") or item.get("raw_name") or item.get("item") or "-"
@@ -299,8 +310,9 @@ def get_top_fail_records(records, limit=10):
 
 def build_stats(records):
     total = len(records)
-    pass_count = sum(1 for r in records if normalize_result(r.get("business_result") or r.get("result")) == "PASS")
-    fail_count = sum(1 for r in records if normalize_result(r.get("business_result") or r.get("result")) == "FAIL")
+    sample = records[:5000]
+    pass_count = sum(1 for r in sample if normalize_result(r.get("business_result") or r.get("result")) == "PASS")
+    fail_count = sum(1 for r in sample if normalize_result(r.get("business_result") or r.get("result")) == "FAIL")
     interrupt_count = total - pass_count - fail_count
 
     return {
@@ -362,13 +374,31 @@ def build_machine_summary():
     offline = sum(1 for m in machines if m.get("online_status") == "OFFLINE")
     return {"total": len(machines), "online": online, "stale": stale, "offline": offline, "machines": sorted(machines, key=lambda i: i["machine_id"])}
 
+def _downsample_points(points, max_points=50):
+    if len(points) <= max_points:
+        return points
+    step = len(points) / max_points
+    result = []
+    for i in range(max_points):
+        idx = min(int(i * step), len(points) - 1)
+        result.append(points[idx])
+    return result
+
+_analysis_cache = None
+_analysis_cache_time = 0
+
 def build_analysis(records):
-    recent_records = records[:2000]
+    global _analysis_cache, _analysis_cache_time
+    now = time.time()
+    if _analysis_cache is not None and now - _analysis_cache_time < 5:
+        return _analysis_cache
+
+    recent_records = records[:200]
     stats = build_stats(recent_records)
     model_summary = {}
     numeric_metrics = {}
     
-    for record in recent_records[:200]: 
+    for record in recent_records:
         for item in record.get("raw_items", []):
             name = item.get("name") or item.get("raw_name")
             val_str = str(item.get("value", ""))
@@ -379,20 +409,22 @@ def build_analysis(records):
                 numeric_metrics[name]["count"] += 1
             except Exception: continue
 
-    all_metrics = sorted(numeric_metrics.values(), key=lambda x: x["count"], reverse=True)[:30]
+    all_metrics = sorted(numeric_metrics.values(), key=lambda x: x["count"], reverse=True)[:20]
     spc_matrix_data = []
     
     for metric in all_metrics:
         points = []
-        for record in reversed(recent_records[:100]):
+        for record in reversed(records[:300]):
             target_item = next((i for i in record.get("raw_items", []) if (i.get("name") or i.get("raw_name")) == metric["name"]), None)
             if target_item:
-                try: points.append({"time": record.get("time", "")[-8:], "val": float(target_item.get("value")), "sn": record.get("sn", "Unknown")})
+                try:
+                    points.append({"time": record.get("time", "")[-8:], "val": float(target_item.get("value")), "sn": record.get("sn", "Unknown")})
                 except: continue
-        if len(points) > 0:
+        if points:
+            points = _downsample_points(points, 50)
             spc_matrix_data.append({"name": metric["name"], "unit": metric["unit"], "hilim": metric["hilim"], "lolim": metric["lolim"], "points": points})
 
-    for record in recent_records:
+    for record in records[:200]:
         model = record.get("model") or "UNKNOWN"
         result = normalize_result(record.get("business_result") or record.get("result") or "中断")
         if model not in model_summary:
@@ -400,16 +432,25 @@ def build_analysis(records):
         model_summary[model][result] += 1
         model_summary[model]["total"] += 1
 
-    return {"stats": stats, "top_fail_items": get_top_fail_records(recent_records, limit=20), "model_summary": model_summary, "spc_matrix": spc_matrix_data}
+    _analysis_cache = {"stats": stats, "top_fail_items": get_top_fail_records(recent_records, limit=20), "model_summary": model_summary, "spc_matrix": spc_matrix_data}
+    _analysis_cache_time = now
+    return _analysis_cache
 
 def build_engineering_insights(records):
+    _cache = getattr(build_engineering_insights, "_cache", None)
+    _cache_time = getattr(build_engineering_insights, "_cache_time", 0)
+    now = time.time()
+    if _cache is not None and now - _cache_time < 5:
+        return _cache
+
     insights = {
         "consecutive_fails": [],
         "cpk_warnings": []
     }
     
+    recent = records[:300]
     station_history = {}
-    for record in records[:100]:
+    for record in recent:
         station = record.get("station", "UNKNOWN_STATION")
         if station not in station_history:
             station_history[station] = []
@@ -430,7 +471,7 @@ def build_engineering_insights(records):
                 })
 
     metrics_data = {}
-    pass_records = [r for r in records[:200] if normalize_result(r.get("business_result") or r.get("result")) == "PASS"]
+    pass_records = [r for r in recent if normalize_result(r.get("business_result") or r.get("result")) == "PASS"]
     
     for record in pass_records:
         for item in record.get("raw_items", []):
@@ -474,6 +515,8 @@ def build_engineering_insights(records):
                     })
                     
     insights["cpk_warnings"].sort(key=lambda x: x["cpk"])
+    build_engineering_insights._cache = insights
+    build_engineering_insights._cache_time = time.time()
     return insights
 
 def load_telemetry_cache():
@@ -506,7 +549,9 @@ def api_health(): return jsonify({"ok": True, "server_time": now_text(), "parser
 def api_all(): return jsonify(safe_load_records())
 
 @app.route("/api/recent")
-def api_recent(): return jsonify(safe_load_records()[:int(request.args.get("limit", "50"))])
+def api_recent():
+    limit = min(int(request.args.get("limit", "50")), 200)
+    return jsonify(safe_load_records()[:limit])
 
 @app.route("/api/search")
 def api_search():
@@ -537,51 +582,96 @@ def api_engineering_insights():
 
 @app.route("/api/limit/compare")
 def api_limit_compare():
-    """比对同一工站下所有测项限值一致性。支持 ?use_spec=true 以 spec 为基准"""
+    """实时限值对比 — 基于当前所有工站的最新记录实时比对限值一致性。支持 ?model=XXX 按型号过滤"""
     if not LIMIT_COMPARE_AVAILABLE or compare_limits is None:
         return jsonify({"ok": False, "message": "limit_compare module not available"})
-    use_spec = request.args.get("use_spec", "").lower() == "true"
-    spec = None
-    if use_spec and load_spec:
-        spec = load_spec(SPEC_CACHE_FILE)
+    model_filter = request.args.get("model", None)
+    if model_filter == "__all__":
+        model_filter = None
     records = safe_load_records()
-    result = compare_limits(records, spec=spec)
+    result = compare_limits(records, model_filter=model_filter)
     return jsonify({"ok": True, "data": result})
 
-@app.route("/api/spec/current")
-def api_spec_current():
-    """查询当前已上传的规格书信息"""
-    if not os.path.exists(SPEC_CACHE_FILE):
-        return jsonify({"ok": True, "uploaded": False, "spec": None})
-    try:
-        with open(SPEC_CACHE_FILE, "r", encoding="utf-8") as f:
-            spec = json.load(f)
-        return jsonify({
-            "ok": True, "uploaded": True,
-            "spec": {
-                "spec_name": spec.get("spec_name", "unknown"),
-                "uploaded_at": spec.get("uploaded_at", ""),
-                "item_count": len(spec.get("items", {})),
-            }
-        })
-    except Exception:
-        return jsonify({"ok": True, "uploaded": False, "spec": None})
+@app.route("/api/limit/models")
+def api_limit_models():
+    """返回所有可用的 PCBA 型号列表"""
+    if not LIMIT_COMPARE_AVAILABLE or list_available_models is None:
+        return jsonify({"ok": False, "models": []})
+    records = safe_load_records()
+    models = list_available_models(records)
+    return jsonify({"ok": True, "models": models})
 
-@app.route("/api/spec/upload", methods=["POST"])
-def api_spec_upload():
-    """上传规格书 JSON。格式: {"spec_name": "...", "items": {"item_name": {"lo": "...", "hi": "..."}}}"""
-    data = request.get_json(silent=True)
-    if not data or "items" not in data:
-        return jsonify({"ok": False, "message": "缺少 items 字段，格式: {\"items\": {\"测项名\": {\"lo\": \"...\", \"hi\": \"...\"}}}"})
-    data["uploaded_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    data.setdefault("spec_name", f"spec_{datetime.now().strftime('%Y%m%d_%H%M%S')}")
+@app.route("/api/alerts/risk")
+def api_alerts_risk():
+    """风险预警：检测同一机台短时间内同问题连续FAIL，并推送到飞书"""
+    records = safe_load_records()
+    insights = build_engineering_insights(records)
+    alerts = []
+    for cf in insights.get("consecutive_fails", []):
+        alerts.append({
+            "type": "consecutive_fail",
+            "severity": "critical",
+            "station": cf["station"],
+            "message": f"{cf['station']}: {cf['consecutive_count']}次连续FAIL",
+            "detail": cf["reason"],
+            "fail_items": cf.get("common_fail_items", []),
+        })
+    if alerts and FEISHU_AVAILABLE and push_alert:
+        webhook_url = load_webhook_url()
+        if webhook_url:
+            push_alert(webhook_url, alerts)
+    return jsonify({"ok": True, "alerts": alerts, "total": len(alerts)})
+
+@app.route("/api/feishu/webhook", methods=["GET", "PUT"])
+def api_feishu_webhook():
+    """获取/设置飞书 Webhook URL"""
+    if not FEISHU_AVAILABLE:
+        return jsonify({"ok": False, "message": "feishu module not available"})
+    if request.method == "PUT":
+        try:
+            data = request.get_json(silent=True) or {}
+            url = data.get("webhook_url", "").strip()
+            from backend.utils.feishu_bot import save_webhook_url
+            save_webhook_url(url)
+            return jsonify({"ok": True, "message": "Webhook URL \u5df2\u4fdd\u5b58"})
+        except Exception as e:
+            return jsonify({"ok": False, "message": str(e)})
+    url = load_webhook_url()
+    return jsonify({"ok": True, "configured": bool(url), "webhook_url": url or ""})
+
+@app.route("/api/feishu/test", methods=["POST"])
+def api_feishu_test():
+    """测试飞书 Webhook 连接"""
+    if not FEISHU_AVAILABLE or send_message is None:
+        return jsonify({"ok": False, "message": "feishu module not available"})
     try:
-        os.makedirs(os.path.dirname(SPEC_CACHE_FILE), exist_ok=True)
-        with open(SPEC_CACHE_FILE, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
-        return jsonify({"ok": True, "message": "规格书上传成功", "spec_name": data["spec_name"], "item_count": len(data["items"])})
+        data = request.get_json(silent=True) or {}
+        url = data.get("webhook_url", "").strip()
+        if not url:
+            url = load_webhook_url()
+        if not url:
+            return jsonify({"ok": False, "message": "\u672a\u914d\u7f6e Webhook URL"})
+        ok, result = send_message(url, "\u2705 FCT \u8bca\u65ad\u4e2d\u67a2 \u8fde\u63a5\u6d4b\u8bd5",
+            "\u8fde\u63a5\u6210\u529f\uff01\u6b63\u5e38\u63a5\u6536\u544a\u8b66\u63a8\u9001\u3002\n\n"
+            "\u2705 \u5b9e\u65f6\u98ce\u9669\u9884\u8b66\u63a8\u9001\n\u2705 \u5b9a\u65f6\u6548\u80fd\u65e5\u62a5",
+            msg_type="interactive")
+        return jsonify({"ok": ok, "message": "\u6d4b\u8bd5\u6210\u529f" if ok else f"\u6d4b\u8bd5\u5931\u8d25: {result}"})
     except Exception as e:
-        return jsonify({"ok": False, "message": f"保存失败: {e}"})
+        return jsonify({"ok": False, "message": str(e)})
+
+@app.route("/api/feishu/daily-report", methods=["POST"])
+def api_feishu_daily_report():
+    """触发发送飞书日报"""
+    if not FEISHU_AVAILABLE or push_daily_report is None:
+        return jsonify({"ok": False, "message": "feishu module not available"})
+    webhook_url = load_webhook_url()
+    if not webhook_url:
+        return jsonify({"ok": False, "message": "\u672a\u914d\u7f6e Webhook URL"})
+    records = safe_load_records()
+    stats = build_stats(records)
+    insights = build_engineering_insights(records)
+    ok, result = push_daily_report(webhook_url, stats, stats.get("top_fail", []), insights.get("cpk_warnings", []))
+    return jsonify({"ok": ok, "message": "\u65e5\u62a5\u5df2\u53d1\u9001" if ok else f"\u53d1\u9001\u5931\u8d25: {result}"})
 
 @app.route("/api/telemetry/push", methods=["POST"])
 def api_telemetry_push():
@@ -598,6 +688,37 @@ def api_telemetry_push():
 
 @app.route("/api/telemetry/latest")
 def api_telemetry_latest(): return jsonify(build_machine_summary())
+
+@app.route("/api/machine/detail")
+def api_machine_detail():
+    mid = request.args.get("machine_id", "").upper()
+    records = safe_load_records()
+    machine = TELEMETRY_CACHE.get(mid, {})
+    station_filter = records
+    if mid:
+        station_num = re.search(r'FCT(\d)', mid)
+        if station_num:
+            station_filter = [r for r in records if str(r.get("station", "")).upper().endswith("FCT" + station_num.group(1))]
+    total = len(station_filter)
+    pass_count = sum(1 for r in station_filter if normalize_result(r.get("business_result") or r.get("result")) == "PASS")
+    fail_count = sum(1 for r in station_filter if normalize_result(r.get("business_result") or r.get("result")) == "FAIL")
+    interrupt_count = total - pass_count - fail_count
+    measurements = machine.get("measurements", {})
+    return jsonify({
+        "machine_id": mid,
+        "current_sn": machine.get("current_sn", "N/A"),
+        "measurements": measurements,
+        "alarms": machine.get("alarms", []),
+        "online_status": get_machine_online_status(machine),
+        "stats": {
+            "total": total,
+            "pass": pass_count,
+            "fail": fail_count,
+            "interrupt": interrupt_count,
+            "fpy": round(pass_count / total * 100, 2) if total > 0 else 0,
+            "fail_rate": round(fail_count / total * 100, 2) if total > 0 else 0,
+        },
+    })
 
 # ============================================================
 # 数据库查询端点 — 不替代原有 API，作为并行通道
@@ -688,7 +809,7 @@ def _compute_analyzed_stats():
         today = datetime.now().strftime("%Y-%m-%d")
         daily_fail = 0
         total_fail = 0
-        for r in records:
+        for r in records[:5000]:
             result = normalize_result(r.get("business_result") or r.get("result") or "中断")
             if result == "FAIL":
                 total_fail += 1
