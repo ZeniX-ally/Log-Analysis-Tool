@@ -1,28 +1,19 @@
 [Unit]
 Description=NEXUS FCT Log Analysis Dashboard Service
-# 确保在网络栈初始化完成后再启动本服务
 After=network.target
 
 [Service]
-# 【自审标注】请将 user_name 替换为您 Ubuntu 系统的实际登录用户名（如 ubuntu 或 root）
 User=user_name
 Group=www-data
 
-# 【自审标注】请将 /path/to/Log-Analysis-Tool 替换为您的实际绝对路径 (例如 /opt/nexus-fct)
 WorkingDirectory=/path/to/Log-Analysis-Tool
-
-# 挂载虚拟环境的 PATH 环境变量
 Environment="PATH=/path/to/Log-Analysis-Tool/venv/bin"
 
-# 启动命令：直接调用 venv 内部的 gunicorn，确保隔离性
-# 4 个 worker 进程适配 R5 处理器，timeout 设置为 120s 防止大体积 XML 解析超时
-ExecStart=/path/to/Log-Analysis-Tool/venv/bin/gunicorn --workers 4 --timeout 120 --bind 0.0.0.0:5000 "backend.app:app"
+ExecStart=/path/to/Log-Analysis-Tool/venv/bin/gunicorn --workers 4 --timeout 120 --bind 0.0.0.0:59488 "backend.app:app"
 
-# 崩溃防线：任何意外退出都将触发自动重启
 Restart=always
 RestartSec=3
 
-# 日志输出配置 (可通过 journalctl -u nexus-fct 查看)
 StandardOutput=syslog
 StandardError=syslog
 SyslogIdentifier=nexus-fct

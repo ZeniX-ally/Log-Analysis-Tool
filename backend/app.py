@@ -667,4 +667,4 @@ if __name__ == "__main__":
         except Exception as _e:
             print(f"[DB] Init failed: {_e}")
     # [修改点] 开启多线程并关闭调试模式，优化 Ubuntu 服务器响应性
-    app.run(host="0.0.0.0", port=5000, debug=False, threaded=True)
+    app.run(host="0.0.0.0", port=59488, debug=False, threaded=True)

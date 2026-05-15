@@ -4,7 +4,8 @@
 # ==========================================
 
 # 1. 获取当前脚本所在绝对路径
-PROJECT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+PROJECT_DIR="$( cd "$SCRIPT_DIR/.." &> /dev/null && pwd )"
 cd "$PROJECT_DIR"
 
 echo "[中枢系统] 进入工程目录: $PROJECT_DIR"
@@ -25,10 +26,9 @@ if ! command -v gunicorn &> /dev/null; then
 fi
 
 # 4. 以调试模式启动 Gunicorn (绑定全网卡 0.0.0.0，允许边缘机推流)
-# 针对 R5/8G 硬件配置，启用 4 个 Worker 进程，采用异步 gevent 或默认 sync 模式
 echo "[中枢系统] 启动 FCT 数据中枢 (Gunicorn)..."
 exec gunicorn --workers 4 \
-              --bind 0.0.0.0:5000 \
+              --bind 0.0.0.0:59488 \
               --access-logfile - \
               --error-logfile - \
               "backend.app:app"
