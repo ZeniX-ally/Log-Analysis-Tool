@@ -14,7 +14,7 @@
   - [4.2 XML 解析器 (fct_parser.py)](#42-xml-解析器-fct_parserpy)
   - [4.3 数据库层 (database.py)](#43-数据库层-databasepy)
   - [4.4 数据模型 (data_model.py)](#44-数据模型-data_modelpy)
-  - [4.5 规则引擎 (fail_rules.py / station_risk_rules.py)](#45-规则引擎-fail_rulespy--station_risk_rulespy)
+  - [4.5 规则引擎 (fail_rules.py / station_risk_rules.py / limit_compare.py)](#45-规则引擎-fail_rulespy--station_risk_rulespy--limit_comparepy)
   - [4.6 知识库 (knowledge/)](#46-知识库-knowledge)
   - [4.7 前端 (index.html)](#47-前端-indexhtml)
 - [5. 边缘机与数据采集](#5-边缘机与数据采集)
@@ -24,7 +24,8 @@
   - [6.1 日志分析接口](#61-日志分析接口)
   - [6.2 机台遥测接口](#62-机台遥测接口)
   - [6.3 数据库查询接口](#63-数据库查询接口)
-  - [6.4 工具与调试接口](#64-工具与调试接口)
+  - [6.4 规格书管理接口](#64-规格书管理接口)
+  - [6.5 页面路由](#65-页面路由)
 - [7. 依赖关系](#7-依赖关系)
 - [8. 数据流与处理管线](#8-数据流与处理管线)
 - [9. 部署与运行方式](#9-部署与运行方式)
@@ -129,9 +130,10 @@ Log-Analysis-Tool/
 │   │   ├── __init__.py
 │   │   └── fct_parser.py           # FCT XML 文件解析
 │   ├── rules/                      # 规则引擎
-│   │   ├── __init__.py
-│   │   ├── fail_rules.py           # Top Fail 统计与预警
-│   │   └── station_risk_rules.py   # 机台风险窗口分析
+│   ├── __init__.py
+│   ├── fail_rules.py           # Top Fail 统计与预警
+│   ├── limit_compare.py        # 机台限值比对 & 规格书合规矩阵
+│   └── station_risk_rules.py   # 机台风险窗口分析
 │   └── knowledge/                  # 工程知识库
 │       ├── test_context.py         # 仪表识别、工程提示、名称解析
 │       ├── instrument_knowledge.py # (预留)
@@ -163,7 +165,7 @@ Log-Analysis-Tool/
 
 ### 4.1 后端服务 (app.py)
 
-[app.py](file:///d:/Log-Analysis-Tool/backend/app.py) 是整个应用的入口，承载 Flask 应用、API 路由、业务聚合和性能优化。
+[app.py](file:///C:/Log-Analysis-Tool/backend/app.py) 是整个应用的入口，承载 Flask 应用、API 路由、业务聚合和性能优化。
 
 #### 4.1.1 核心全局变量
 
@@ -179,26 +181,26 @@ Log-Analysis-Tool/
 
 | 函数 | 行号 | 职责 |
 |------|------|------|
-| `get_dir_mtime()` | L150-L155 | 获取目录最后修改时间戳 |
-| `_cached_load_records()` | L158-L167 | LRU 缓存的解析函数（maxsize=1），以目录 mtime 作为缓存 key |
-| `safe_load_records()` | L169-L173 | 代理函数，将目录 mtime 传入缓存系统 |
-| `sync_records_to_db()` | L180-L193 | 将内存解析记录批量同步到 SQLite |
-| `get_db_sync_status()` | L195-L211 | 返回 DB 同步状态（日志文件数 vs DB 记录数） |
-| `normalize_result()` | L215-L225 | 将原始状态归一化为 PASS / FAIL / 中断 |
-| `fallback_build_top_fail()` | L227-L275 | 兜底 TOP FAIL 统计（当 rules 模块不可用时） |
-| `get_top_fail_records()` | L277-L283 | 优先使用 rules 模块，兜底 fallback |
-| `build_stats()` | L285-L301 | 构建测试统计摘要（总数/通过/失败/FPY/TOP FAIL） |
-| `build_analysis()` | L348-L386 | 构建完整分析数据（统计+TOP FAIL+型号汇总+SPC 矩阵） |
-| `build_engineering_insights()` | L388-L460 | 工程洞察：连续 FAIL 检测 + CPK 预警 |
+| `get_dir_mtime()` | L159-L164 | 获取目录最后修改时间戳 |
+| `_cached_load_records()` | L167-L176 | LRU 缓存的解析函数（maxsize=1），以目录 mtime 作为缓存 key |
+| `safe_load_records()` | L178-L182 | 代理函数，将目录 mtime 传入缓存系统 |
+| `sync_records_to_db()` | L189-L202 | 将内存解析记录批量同步到 SQLite |
+| `get_db_sync_status()` | L204-L220 | 返回 DB 同步状态（日志文件数 vs DB 记录数） |
+| `normalize_result()` | L224-L234 | 将原始状态归一化为 PASS / FAIL / 中断 |
+| `fallback_build_top_fail()` | L236-L284 | 兜底 TOP FAIL 统计（当 rules 模块不可用时） |
+| `get_top_fail_records()` | L286-L292 | 优先使用 rules 模块，兜底 fallback |
+| `build_stats()` | L294-L310 | 构建测试统计摘要（总数/通过/失败/FPY/TOP FAIL） |
+| `build_analysis()` | L357-L395 | 构建完整分析数据（统计+TOP FAIL+型号汇总+SPC 矩阵） |
+| `build_engineering_insights()` | L397-L469 | 工程洞察：连续 FAIL 检测 + CPK 预警 |
 
 #### 4.1.3 排序与时间处理
 
 | 函数 | 行号 | 说明 |
 |------|------|------|
-| `parse_time_to_timestamp()` | L92-L110 | 支持三种时间格式解析 |
-| `parse_filename_time_to_timestamp()` | L112-L122 | 从文件名提取时间戳 |
-| `get_record_sort_timestamp()` | L130-L141 | 多字段回退排序时间提取 |
-| `sort_records_latest_first()` | L143-L144 | 按时间倒序排列记录 |
+| `parse_time_to_timestamp()` | L101-L119 | 支持三种时间格式解析 |
+| `parse_filename_time_to_timestamp()` | L121-L131 | 从文件名提取时间戳 |
+| `get_record_sort_timestamp()` | L139-L150 | 多字段回退排序时间提取 |
+| `sort_records_latest_first()` | L152-L153 | 按时间倒序排列记录 |
 
 #### 4.1.4 API 路由列表
 
@@ -206,16 +208,16 @@ Log-Analysis-Tool/
 
 #### 4.1.5 性能优化策略
 
-1. **Lru_cache + 目录 mtime**：避免每次请求都重新解析 XML（`_cached_load_records`，L158）
-2. **Flask JSON 压缩**：关闭 `JSONIFY_PRETTYPRINT_REGULAR` 减少网络 I/O（L47）
-3. **多线程模式**：`app.run(threaded=True)` 支持并发请求（L605）
-4. **懒加载模块导入**：parser / rules / database 模块均使用 try/except 导入，单一模块异常不影响整体服务（L49-L87）
+1. **Lru_cache + 目录 mtime**：避免每次请求都重新解析 XML（`_cached_load_records`，L167）
+2. **Flask JSON 压缩**：关闭 `JSONIFY_PRETTYPRINT_REGULAR` 减少网络 I/O（L48）
+3. **多线程模式**：`app.run(threaded=True)` 支持并发请求（L662）
+4. **懒加载模块导入**：parser / rules / database 模块均使用 try/except 导入，单一模块异常不影响整体服务（L49-L96）
 
 ---
 
 ### 4.2 XML 解析器 (fct_parser.py)
 
-[fct_parser.py](file:///d:/Log-Analysis-Tool/backend/parser/fct_parser.py) 负责解析真实 FTS / FCT XML 测试日志文件。
+[fct_parser.py](file:///C:/Log-Analysis-Tool/backend/parser/fct_parser.py) 负责解析真实 FTS / FCT XML 测试日志文件。
 
 #### 4.2.1 核心函数
 
@@ -223,7 +225,7 @@ Log-Analysis-Tool/
 |------|------|--------|------|
 | `parse_fct_xml()` | L385-L536 | `dict` | 解析单个 XML 文件，返回完整 TestRecord 字典 |
 | `load_all_fct_records()` | L539-L548 | `list[dict]` | 递归扫描目录下所有 XML 并批量解析 |
-| `find_latest_record_by_sn()` | L555-L597 | `dict | None` | 按 SN 精确/模糊/后缀/文件名匹配查找 |
+| `find_latest_record_by_sn()` | L555-L597 | `dict \| None` | 按 SN 精确/模糊/后缀/文件名匹配查找 |
 | `parse_test_nodes()` | L263-L308 | `list[dict]` | 遍历 XML 中所有 `<TEST>` 节点，提取测项 |
 | `parse_abnormal_groups()` | L311-L319 | `list[dict]` | 提取状态异常（中断）的 `<GROUP>` 节点 |
 | `get_station_from_xml()` | L322-L335 | `tuple` | 从 `<FACTORY>` 和 `<PRODUCT>` 提取工站信息 |
@@ -262,7 +264,7 @@ BATCH (批次级)
 
 ### 4.3 数据库层 (database.py)
 
-[database.py](file:///d:/Log-Analysis-Tool/backend/database.py) 提供 SQLite 持久化层，替代纯 JSON 缓存方案。
+[database.py](file:///C:/Log-Analysis-Tool/backend/database.py) 提供 SQLite 持久化层，替代纯 JSON 缓存方案。
 
 #### 4.3.1 数据库表结构
 
@@ -293,7 +295,7 @@ BATCH (批次级)
 
 ### 4.4 数据模型 (data_model.py)
 
-[data_model.py](file:///d:/Log-Analysis-Tool/backend/models/data_model.py) 使用 Python dataclass 定义三种核心数据模型。
+[data_model.py](file:///C:/Log-Analysis-Tool/backend/models/data_model.py) 使用 Python dataclass 定义三种核心数据模型。
 
 #### 4.4.1 TestItem — 单个测试项
 
@@ -340,7 +342,7 @@ BATCH (批次级)
 
 #### 4.5.1 fail_rules.py — Top Fail 统计
 
-[fail_rules.py](file:///d:/Log-Analysis-Tool/backend/rules/fail_rules.py)
+[fail_rules.py](file:///C:/Log-Analysis-Tool/backend/rules/fail_rules.py)
 
 | 函数 | 行号 | 说明 |
 |------|------|------|
@@ -351,7 +353,7 @@ BATCH (批次级)
 
 #### 4.5.2 station_risk_rules.py — 机台风险窗口分析
 
-[station_risk_rules.py](file:///d:/Log-Analysis-Tool/backend/rules/station_risk_rules.py)
+[station_risk_rules.py](file:///C:/Log-Analysis-Tool/backend/rules/station_risk_rules.py)
 
 **核心算法**：按时间窗口（默认 30 分钟）+ 测试项 + 仪表进行分组，当同一窗口内多个不同 SN 出现相同 FAIL 项时，判定为系统性风险。
 
@@ -366,13 +368,71 @@ BATCH (批次级)
 - `min_sn_count >= 3`：至少 3 台不同机台
 - `fail_count >= 5`：HIGH 等级
 
+#### 4.5.3 limit_compare.py — 限值比对与规格书合规矩阵
+
+[limit_compare.py](file:///C:/Log-Analysis-Tool/backend/rules/limit_compare.py) 提供两种限值比对模式：
+
+1. **机台对比矩阵 (Machine Matrix)** — 在不依赖外部规格书的情况下，对比不同工站/机台之间同一测项的限值是否一致
+2. **规格书合规矩阵 (Spec Compliance Matrix)** — 以上传的规格书 JSON 为基准，逐项比对各机台限值是否符合规格
+
+| 函数 | 行号 | 返回值 | 说明 |
+|------|------|--------|------|
+| `load_spec()` | L9-L16 | `dict \| None` | 从 JSON 文件加载规格书 |
+| `find_model_in_record()` | L19-L26 | `str` | 从记录中提取产品型号 |
+| `spec_limits_for_model()` | L29-L44 | `dict \| None` | 查询指定型号在规格书中的限值 |
+| `resolve_model_group()` | L47-L54 | `str` | 将型号映射到型号组（model group） |
+| `build_station_profile()` | L57-L83 | `dict` | 按工站聚合限值信息 |
+| `build_machine_matrix()` | L86-L195 | `dict` | 构建机台限值对比矩阵 |
+| `build_spec_compliance_matrix()` | L198-L293 | `dict` | 构建规格书合规矩阵 |
+| `compare_limits()` | L296-L302 | `dict` | 统一入口：根据是否有 spec 返回不同对比结果 |
+
+**机台对比矩阵核心逻辑**：
+
+```
+build_machine_matrix()
+  ├── build_station_profile()        → 按工站聚合测项限值
+  ├── 遍历所有测项，对每个测项:
+  │     ├── 按限值分组 → limit_groups
+  │     ├── 按型号分组 → model_consistency
+  │     ├── 判断是否所有机台一致 → all_same
+  │     ├── 识别偏离机台 → deviant_stations
+  │     └── 判断差异是否因型号不同导致 → model_diff
+  └── 排序：不一致的排前面
+```
+
+**规格书 JSON 格式**：
+
+```json
+{
+  "spec_name": "G4.9_FCT_Spec_V2.9",
+  "pcba_models": ["E3002609", "E3002781"],
+  "model_groups": {
+    "A": ["E3002609"],
+    "B": ["E3002781"]
+  },
+  "items": {
+    "测项名": {
+      "unit": "V",
+      "limits": [
+        {"models": "*", "lo": "0", "hi": "5"},
+        {"models": ["E3002609"], "lo": "0", "hi": "3.3"}
+      ]
+    }
+  }
+}
+```
+
+- `models="*"` 表示所有型号共用此限值
+- `model_groups` 支持将多个型号归为一组，简化限值定义
+- 前端支持上传 JSON 文件到 `/api/spec/upload`
+
 ---
 
 ### 4.6 知识库 (knowledge/)
 
 #### 4.6.1 test_context.py — 工程上下文知识
 
-[test_context.py](file:///d:/Log-Analysis-Tool/backend/knowledge/test_context.py)
+[test_context.py](file:///C:/Log-Analysis-Tool/backend/knowledge/test_context.py)
 
 | 函数/常量 | 行号 | 说明 |
 |-----------|------|------|
@@ -397,7 +457,7 @@ BATCH (批次级)
 
 ### 4.7 前端 (index.html)
 
-[index.html](file:///d:/Log-Analysis-Tool/frontend/templates/index.html) — 单文件 SPA，Jinja2 模板 + Vanilla JS + ECharts。
+[index.html](file:///C:/Log-Analysis-Tool/frontend/templates/index.html) — 单文件 SPA，Jinja2 模板 + Vanilla JS + ECharts。
 
 #### 4.7.1 四个功能面板
 
@@ -452,7 +512,7 @@ BATCH (批次级)
 
 ### 5.2 Mock 测试代理
 
-[mock_machine_agent.py](file:///d:/Log-Analysis-Tool/tools/mock_machine_agent.py) 用于开发调试阶段模拟机台行为。
+[mock_machine_agent.py](file:///C:/Log-Analysis-Tool/tools/mock_machine_agent.py) 用于开发调试阶段模拟机台行为。
 
 **功能**：模拟 3 台 FCT 机台，每 2 秒推送一次遥测数据，包含：
 
@@ -503,7 +563,25 @@ python tools/mock_machine_agent.py
 | `/api/db/top_fail` | GET | `limit`, `station` | 从 DB 获取 TOP FAIL 统计 |
 | `/api/db/telemetry` | GET | — | 从 DB 获取机台遥测摘要 |
 
-### 6.4 工具与调试接口
+### 6.4 规格书管理接口
+
+| 端点 | 方法 | 参数 | 说明 |
+|------|------|------|------|
+| `/api/limit/compare` | GET | `use_spec` (可选 true/false) | 限值比对：机台对比矩阵 或 Spec 合规矩阵 |
+| `/api/spec/current` | GET | — | 查询当前已上传的规格书信息 |
+| `/api/spec/upload` | POST | JSON body | 上传规格书 JSON |
+
+**`/api/spec/upload` 请求体格式**：
+```json
+{
+  "spec_name": "G4.9_FCT_Spec_V2.9",
+  "items": {
+    "1.1.1 P1V2_PHY_AVDD(DMM)": {"lo": "0", "hi": "5"}
+  }
+}
+```
+
+### 6.5 页面路由
 
 | 端点 | 方法 | 说明 |
 |------|------|------|
@@ -549,7 +627,10 @@ app.py
   │     └── (xml.etree.ElementTree)
   ├── rules/fail_rules.py
   ├── rules/station_risk_rules.py
+  ├── rules/limit_compare.py
+  │     └── (json, os, re)
   ├── database.py
+  │     └── (sqlite3, json)
   └── models/data_model.py
 
 knowledge/test_context.py
@@ -691,7 +772,7 @@ bash "Ubuntu server/start_server.sh"
 
 ### 9.3 Systemd 服务
 
-服务配置文件位于 [nexus-fct.service](file:///d:/Log-Analysis-Tool/Ubuntu%20server/nexus-fct.service)。
+服务配置文件位于 [nexus-fct.service](file:///C:/Log-Analysis-Tool/Ubuntu%20server/nexus-fct.service)。
 
 **配置要点**：
 - 工作目录：需替换 `/path/to/Log-Analysis-Tool`
@@ -729,8 +810,8 @@ UNKNOWN / 其他                   中断
 ```
 
 **归一化函数**：
-- `normalize_raw_status()` — XML 解析层 ([fct_parser.py L114-L120](file:///d:/Log-Analysis-Tool/backend/parser/fct_parser.py#L114-L120))
-- `normalize_result()` — API 聚合层 ([app.py L215-L225](file:///d:/Log-Analysis-Tool/backend/app.py#L215-L225))
+- `normalize_raw_status()` — XML 解析层 ([fct_parser.py L114-L120](file:///C:/Log-Analysis-Tool/backend/parser/fct_parser.py#L114-L120))
+- `normalize_result()` — API 聚合层 ([app.py L215-L225](file:///C:/Log-Analysis-Tool/backend/app.py#L215-L225))
 - `normalizeResult()` — 前端层 (JS)
 
 ### 10.2 双通道数据源

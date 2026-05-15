@@ -11,7 +11,7 @@ import time # [优化点新增]
 from pathlib import Path # [新增] 用于跨平台路径处理
 
 try:
-    from flask import Flask, jsonify, render_template, request, Response
+    from flask import Flask, jsonify, make_response, render_template, request, Response
 except ImportError as exc:
     raise ImportError(
         "Flask is required to run this application. Install it with 'pip install Flask'."
@@ -43,6 +43,8 @@ app = Flask(
     template_folder=TEMPLATE_DIR,
     static_folder=STATIC_DIR if os.path.isdir(STATIC_DIR) else None,
 )
+app.jinja_env.auto_reload = True
+app.config['TEMPLATES_AUTO_RELOAD'] = True
 
 # [优化点 3] 覆盖 Flask 原生的 jsonify 行为，使用紧凑型序列化，减少网络 I/O 体积
 app.config['JSONIFY_PRETTYPRINT_REGULAR'] = False 
@@ -484,7 +486,12 @@ def save_telemetry_cache():
 @app.route("/dashboard")
 @app.route("/analysis")
 @app.route("/machine")
-def index(): return render_template("index.html")
+def index():
+    resp = make_response(render_template("index.html"))
+    resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    resp.headers["Pragma"] = "no-cache"
+    resp.headers["Expires"] = "0"
+    return resp
 
 @app.route("/api/health")
 def api_health(): return jsonify({"ok": True, "server_time": now_text(), "parser_loaded": load_all_fct_records is not None, "log_dir": LOG_DIR})
@@ -659,4 +666,4 @@ if __name__ == "__main__":
         except Exception as _e:
             print(f"[DB] Init failed: {_e}")
     # [修改点] 开启多线程并关闭调试模式，优化 Ubuntu 服务器响应性
-    app.run(host="0.0.0.0", port=5000, debug=False, threaded=True)
+    app.run(host="0.0.0.0", port=5000, debug=True, threaded=True)
