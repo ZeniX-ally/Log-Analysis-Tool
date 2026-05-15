@@ -2,3 +2,5 @@ data/telemetry_cache.json
 *.json
 data/telemetry_cache.json
 /backend/__pycache__
+data/telemetry_cache.json
+data/log_analysis.db
