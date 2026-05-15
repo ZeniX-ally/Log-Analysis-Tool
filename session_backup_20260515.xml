@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<session_summary>
+  <date>2026-05-15</date>
+  <project>NEXUS FCT Log Analysis Dashboard</project>
+  <root_path>d:\Log-Analysis-Tool</root_path>
+  <server_port>59488</server_port>
+
+  <architecture>
+    <description>FCT测试台agent通过HTTP上传XML日志到Linux服务端，服务端解析后在Web Dashboard展示，支持飞书推送报警和日报</description>
+    <data_flow>
+      <step>FCT测试台 (Windows) → fct_agent_*.py 扫描 D:\Results 目录 → HTTP POST /api/upload_log → Linux服务端 data/logs/ 落盘 → 自动解析 → Web展示</step>
+    </data_flow>
+    <agent_config>
+      <file_prefix>fct_agent_</file_prefix>
+      <count>6</count>
+      <list>
+        <agent>fct_agent_1.py — MACHINE_ID=PEU_G49_FCT1_01, LOCAL_LOG_DIR=D:\Results, SERVER_IP=172.28.55.66</agent>
+        <agent>fct_agent_2.py — MACHINE_ID=PEU_G49_FCT2_01, LOCAL_LOG_DIR=D:\Results, SERVER_IP=172.28.55.66</agent>
+        <agent>fct_agent_3.py — MACHINE_ID=PEU_G49_FCT3_01, LOCAL_LOG_DIR=D:\Results, SERVER_IP=172.28.55.66</agent>
+        <agent>fct_agent_4.py — MACHINE_ID=PEU_G49_FCT4_01, LOCAL_LOG_DIR=D:\Results, SERVER_IP=172.28.55.66</agent>
+        <agent>fct_agent_5.py — MACHINE_ID=PEU_G49_FCT5_01, LOCAL_LOG_DIR=D:\Results, SERVER_IP=172.28.55.66</agent>
+        <agent>fct_agent_6.py — MACHINE_ID=PEU_G49_FCT6_01, LOCAL_LOG_DIR=D:\Results, SERVER_IP=172.28.55.66</agent>
+      </list>
+      <note>上线时只需把 SERVER_IP 改为 Linux 服务器内网 IP，其余不用动</note>
+    </agent_config>
+  </architecture>
+
+  <features_implemented>
+    <feature name="详情弹窗增强">
+      <description>点击Pipeline表格行打开的弹窗，新增8字段元数据面板（TESTER/LINE/FACTORY/USER/TESTTIME/STARTTIME/PRODUCT/STATUS/SERIALNO），3列布局替代老8字段</description>
+      <files_changed>
+        <file>frontend/templates/index.html — openModal函数重写infoHtml部分</file>
+        <file>backend/utils/feishu_bot.py — 新增factory/line/user/dut_testtime/panel_testtime字段</file>
+      </files_changed>
+    </feature>
+
+    <feature name="铃铛风险预警系统">
+      <description>顶栏SVG铃铛图标+红色计数徽章，检测同一机台3次连续FAIL共同失败测项触发critical预警。点击铃铛展开下拉面板，点击空白处收起。新预警播放"哔哔"提示音</description>
+      <files_changed>
+        <file>frontend/templates/index.html — bellIcon SVG + alertDropdown + loadAlerts() + playAlertSound() + toggleAlertPanel()</file>
+        <file>backend/app.py — /api/alerts/risk 端点复用build_engineering_insights</file>
+      </files_changed>
+    </feature>
+
+    <feature name="飞书集成">
+      <description>实时风险预警推送到飞书群 + 每天08:30定时日报 + 页面内配置Webhook + 测试连接</description>
+      <files_created>
+        <file>backend/utils/feishu_bot.py — 飞书消息发送模块(send_message/push_alert/push_daily_report/load_webhook_url/save_webhook_url)</file>
+      </files_created>
+      <files_changed>
+        <file>backend/app.py — 新增4个API端点(/api/feishu/webhook, /api/feishu/test, /api/feishu/daily-report) + api_alerts_risk集成推送</file>
+        <file>frontend/templates/index.html — ⚙️齿轮SVG图标+openFeishuConfig/loadFeishuConfig/saveFeishuConfig/testFeishuConfig函数</file>
+      </files_changed>
+      <api_endpoints>
+        <endpoint>GET  /api/feishu/webhook — 查看Webhook配置</endpoint>
+        <endpoint>PUT  /api/feishu/webhook — 设置Webhook URL</endpoint>
+        <endpoint>POST /api/feishu/test — 测试飞书连接</endpoint>
+        <endpoint>POST /api/feishu/daily-report — 手动触发日报</endpoint>
+      </api_endpoints>
+      <webhook_url>https://open.feishu.cn/open-apis/bot/v2/hook/0eb941cc-5403-40a4-b0fd-6e4c9af92336</webhook_url>
+      <daily_report_schedule>每天08:30 (Asia/Shanghai), 通过SOLO云端调度器POST /api/feishu/daily-report触发</daily_report_schedule>
+      <daily_report_paused>是（用户要求停止推送）</daily_report_paused>
+    </feature>
+
+    <feature name="Linux一键部署">
+      <description>新改写的deploy.sh支持自动安装Python3+venv+gunicorn+systemd服务+防火墙+飞书配置+Nginx反向代理(可选)</description>
+      <files_created>
+        <file>deploy/nexus-fct.service — Systemd服务单元文件</file>
+        <file>deploy/nexus-fct-nginx.conf — Nginx反向代理模板</file>
+      </files_created>
+      <files_changed>
+        <file>deploy.sh (根目录) — 完整重写，18KB</file>
+      </files_changed>
+      <usage>scp -r /d/Log-Analysis-Tool user@server:/opt/nexus-fct → cd /opt/nexus-fct → chmod +x deploy.sh → sudo ./deploy.sh</usage>
+      <note>内网部署在Nginx交互问答时选n跳过即可，直接http://IP:59488访问</note>
+    </feature>
+
+    <feature name="批量积压上传加速">
+      <description>针对首次上线30万文件/140GB积压场景，8线程并行+GZip压缩(压缩比6%)+断点续传</description>
+      <files_created>
+        <file>edge_scripts/bulk_upload.py — 批量加速上传脚本</file>
+      </files_created>
+      <files_changed>
+        <file>backend/app.py — /api/upload_log端点支持GZip解压(compressed参数)</file>
+      </files_changed>
+      <performance>
+        <estimate>30万文件约30-50分钟完成上传（6台并行）</estimate>
+        <compression_ratio>XML文本压缩到原始大小的6%（490KB → 30KB）</compression_ratio>
+      </performance>
+    </feature>
+
+    <feature name="365天数据过滤">
+      <description>parser层按文件修改时间过滤，超过365天的XML文件跳过解析</description>
+      <files_changed>
+        <file>backend/parser/fct_parser.py — load_all_fct_records()增加max_age_days=365参数，os.path.getmtime()过滤</file>
+      </files_changed>
+    </feature>
+
+    <feature name="PASS色块悬浮修复">
+      <description>hover-glow悬浮时PASS标签白底白字不可见 → 改为黑底白字</description>
+      <files_changed>
+        <file>frontend/templates/index.html — 新增.hover-glow:hover .pill-pass CSS规则</file>
+      </files_changed>
+    </feature>
+
+    <feature name="UI图标风格统一">
+      <description>铃铛和齿轮从emoji改为SVG描边图标，保持与导航栏一致的视觉风格</description>
+      <files_changed>
+        <file>frontend/templates/index.html — bellIcon/gearIcon替换为SVG，stroke-width=2, fill=none, stroke-linecap=round</file>
+      </files_changed>
+    </feature>
+
+    <feature name="统计卡片点击区域修复">
+      <description>Pass/Fail/中断卡片的onclick从内层数字元素移到外层card元素，整卡可点击</description>
+      <files_changed>
+        <file>frontend/templates/index.html — 移动onclick和cursor:pointer到外层div.card</file>
+      </files_changed>
+    </feature>
+  </features_implemented>
+
+  <file_structure>
+    <file>backend/app.py — Flask主应用（所有API端点）</file>
+    <file>backend/database.py — SQLite数据库操作</file>
+    <file>backend/parser/fct_parser.py — XML日志解析引擎</file>
+    <file>backend/rules/fail_rules.py — FAIL分析规则</file>
+    <file>backend/rules/limit_compare.py — 限值比对</file>
+    <file>backend/utils/feishu_bot.py — 飞书消息推送模块</file>
+    <file>backend/knowledge/ — 领域知识库（测试上下文/仪器/规格）</file>
+    <file>frontend/templates/index.html — 单页Web应用（全部前端）</file>
+    <file>edge_scripts/fct_agent_*.py — 6台FCT测试台采集代理</file>
+    <file>edge_scripts/bulk_upload.py — 批量积压加速上传脚本</file>
+    <file>deploy.sh — Linux一键部署脚本</file>
+    <file>deploy/nexus-fct.service — Systemd服务单元</file>
+    <file>deploy/nexus-fct-nginx.conf — Nginx反向代理模板</file>
+  </file_structure>
+
+  <current_status>
+    <server_running>是 - http://127.0.0.1:59488</server_running>
+    <current_data>75条真实日志(61PASS/3FAIL/11中断)，FPY=81.33%</current_data>
+    <feishu_webhook>已清除（用户要求停止推送）</feishu_webhook>
+    <daily_report>已暂停（SOLO定时任务Paused）</daily_report>
+  </current_status>
+
+  <pending_tasks>
+    <task>部署到Linux服务器 — 购买服务器后，scp上传项目 → sudo ./deploy.sh</task>
+    <task>修改agent的SERVER_IP — 6个fct_agent_*.py的SERVER_IP改为Linux服务器内网IP</task>
+    <task>首次积压跑批量上传 — 每个FCT测试台运行python bulk_upload.py --server http://服务器IP:59488 --dir D:\Results</task>
+    <task>清理旧文件 — 进Linux服务器删除data/logs/中超过365天的XML文件（或让自动过滤机制处理）</task>
+  </pending_tasks>
+</session_summary>

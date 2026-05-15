@@ -826,15 +826,30 @@ def _compute_analyzed_stats():
 
 @app.route("/api/upload_log", methods=["POST"])
 def api_upload_log():
-    """边缘机日志上传接口 — 接收 multipart/form-data (machine_id + file)"""
+    """边缘机日志上传接口 — 接收 multipart/form-data (machine_id + file)
+    支持普通上传和 GZip 压缩上传（批量加速用）"""
+    import gzip
     machine_id = request.form.get("machine_id", "UNKNOWN")
+    is_compressed = request.form.get("compressed", "0") == "1"
+    original_name = request.form.get("original_name", "")
     file_obj = request.files.get("file")
     if not file_obj:
         return jsonify({"ok": False, "error": "未接收到文件"})
 
-    filename = file_obj.filename or f"unknown_{int(time.time())}.xml"
+    filename = original_name or (file_obj.filename or f"unknown_{int(time.time())}.xml")
+    if filename.endswith(".gz"):
+        filename = filename[:-3]
+    if not filename.endswith(".xml"):
+        filename += ".xml"
+
     file_content = file_obj.read()
     file_size = len(file_content)
+
+    if is_compressed:
+        try:
+            file_content = gzip.decompress(file_content)
+        except Exception:
+            pass  # 非压缩数据也兼容
 
     save_path = os.path.join(LOG_DIR, filename)
     try:

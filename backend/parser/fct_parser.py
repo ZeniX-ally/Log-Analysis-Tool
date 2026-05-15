@@ -1,6 +1,7 @@
 import glob
 import os
 import re
+import time
 import datetime
 import xml.etree.ElementTree as ET
 
@@ -547,13 +548,25 @@ def parse_fct_xml(xml_file_path, log_dir=None):
         }
 
 
-def load_all_fct_records(log_dir):
+def load_all_fct_records(log_dir, max_age_days=365):
     pattern = os.path.join(log_dir, "**", "*.xml")
     files = glob.glob(pattern, recursive=True)
 
+    cutoff_ts = time.time() - max_age_days * 86400
+    filtered = 0
     records = []
     for path in files:
+        try:
+            mtime = os.path.getmtime(path)
+            if mtime < cutoff_ts:
+                filtered += 1
+                continue
+        except Exception:
+            pass
         records.append(parse_fct_xml(path, log_dir=log_dir))
+
+    if filtered:
+        print(f"[PARSER] 已过滤 {filtered} 个超过 {max_age_days} 天的旧文件")
 
     records.sort(key=lambda item: item.get("file_mtime_ts", 0), reverse=True)
     return records
