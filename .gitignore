@@ -1,3 +1,4 @@
 data/telemetry_cache.json
 *.json
 data/telemetry_cache.json
+/backend/__pycache__
