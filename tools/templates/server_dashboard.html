@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEXUS FCT Server Monitor | POWERED BY ZENIX-ALLY</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-base: #0a0a0a;
+            --surface: #141414;
+            --surface-hover: #1e1e1e;
+            --border: #222;
+            --text: #e8e8e8;
+            --text-dim: #666;
+            --accent: #E31937;
+            --green: #22c55e;
+            --yellow: #eab308;
+            --red: #ef4444;
+            --blue: #3b82f6;
+            --radius: 16px;
+            --font: 'Inter', -apple-system, sans-serif;
+            --mono: 'JetBrains Mono', monospace;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            background: var(--bg-base);
+            color: var(--text);
+            font-family: var(--font);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background: radial-gradient(ellipse at 50% 0%, #111 0%, #0a0a0a 70%);
+            z-index: -1;
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 24px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            margin-bottom: 20px;
+        }
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        .header-title {
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: -0.3px;
+        }
+        .header-title span {
+            color: var(--accent);
+        }
+        .header-sub {
+            font-size: 13px;
+            color: var(--text-dim);
+        }
+        .status-badge {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+        }
+        .status-badge.online {
+            background: rgba(34,197,94,0.12);
+            color: var(--green);
+            border: 1px solid rgba(34,197,94,0.25);
+        }
+        .status-badge.offline {
+            background: rgba(239,68,68,0.12);
+            color: var(--red);
+            border: 1px solid rgba(239,68,68,0.25);
+        }
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+        .status-dot.online { background: var(--green); }
+        .status-dot.offline { background: var(--red); }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        .grid {
+            display: grid;
+            gap: 16px;
+        }
+        .grid-top {
+            grid-template-columns: 1fr 1fr;
+        }
+        .grid-machines {
+            grid-template-columns: 1fr;
+        }
+        .grid-bottom {
+            grid-template-columns: 1fr 1fr;
+        }
+
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 10%;
+            right: 10%;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.05), transparent);
+        }
+        .card-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 16px;
+        }
+
+        .stat-row {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .stat-item {
+            flex: 1;
+            min-width: 100px;
+            padding: 12px;
+            background: rgba(255,255,255,0.03);
+            border-radius: 10px;
+            text-align: center;
+        }
+        .stat-value {
+            font-family: var(--mono);
+            font-size: 28px;
+            font-weight: 700;
+            line-height: 1.2;
+        }
+        .stat-value.green { color: var(--green); }
+        .stat-value.red { color: var(--red); }
+        .stat-value.yellow { color: var(--yellow); }
+        .stat-value.blue { color: var(--blue); }
+        .stat-value.white { color: var(--text); }
+        .stat-label {
+            font-size: 12px;
+            color: var(--text-dim);
+            margin-top: 4px;
+        }
+
+        .progress-bar {
+            height: 6px;
+            background: rgba(255,255,255,0.06);
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: 8px;
+        }
+        .progress-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.8s ease;
+        }
+        .progress-fill.green { background: var(--green); }
+        .progress-fill.yellow { background: var(--yellow); }
+        .progress-fill.red { background: var(--red); }
+        .progress-fill.blue { background: var(--blue); }
+
+        .sys-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+        .sys-item {
+            padding: 12px;
+            background: rgba(255,255,255,0.03);
+            border-radius: 10px;
+        }
+        .sys-label {
+            font-size: 12px;
+            color: var(--text-dim);
+            margin-bottom: 4px;
+        }
+        .sys-value {
+            font-family: var(--mono);
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .machine-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .machine-table th {
+            text-align: left;
+            font-size: 12px;
+            color: var(--text-dim);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 8px 12px;
+            border-bottom: 1px solid var(--border);
+        }
+        .machine-table td {
+            padding: 10px 12px;
+            font-size: 14px;
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+        }
+        .machine-table tr:last-child td { border-bottom: none; }
+        .machine-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .machine-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+        }
+        .machine-dot.online { background: var(--green); box-shadow: 0 0 6px var(--green); }
+        .machine-dot.stale { background: var(--yellow); box-shadow: 0 0 6px var(--yellow); }
+        .machine-dot.offline { background: var(--red); box-shadow: 0 0 6px var(--red); }
+
+        .activity-log {
+            max-height: 280px;
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: var(--border) transparent;
+        }
+        .activity-log::-webkit-scrollbar { width: 4px; }
+        .activity-log::-webkit-scrollbar-track { background: transparent; }
+        .activity-log::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+        .activity-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 6px 0;
+            font-size: 13px;
+            border-bottom: 1px solid rgba(255,255,255,0.03);
+        }
+        .activity-item:last-child { border-bottom: none; }
+        .activity-time {
+            font-family: var(--mono);
+            font-size: 12px;
+            color: var(--text-dim);
+            min-width: 70px;
+        }
+        .activity-event {
+            font-weight: 600;
+            font-size: 11px;
+            padding: 2px 8px;
+            border-radius: 4px;
+            min-width: 48px;
+            text-align: center;
+        }
+        .activity-event.new { background: rgba(59,130,246,0.15); color: var(--blue); }
+        .activity-event.ok { background: rgba(34,197,94,0.15); color: var(--green); }
+        .activity-event.fail { background: rgba(239,68,68,0.15); color: var(--red); }
+        .activity-content {
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .activity-machine {
+            font-size: 12px;
+            color: var(--text-dim);
+        }
+
+        .speed-display {
+            text-align: center;
+            padding: 16px;
+        }
+        .speed-value {
+            font-family: var(--mono);
+            font-size: 36px;
+            font-weight: 700;
+        }
+        .speed-label {
+            font-size: 13px;
+            color: var(--text-dim);
+            margin-top: 4px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-dim);
+        }
+        .empty-state .icon {
+            font-size: 40px;
+            margin-bottom: 12px;
+            opacity: 0.3;
+        }
+
+        .loading-overlay {
+            position: fixed;
+            inset: 0;
+            background: var(--bg-base);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 999;
+            transition: opacity 0.5s;
+        }
+        .loading-overlay.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .uptime-display {
+            font-family: var(--mono);
+            font-size: 14px;
+            color: var(--text-dim);
+        }
+
+        @media (max-width: 900px) {
+            body { padding: 12px; }
+            .grid-top { grid-template-columns: 1fr; }
+            .grid-bottom { grid-template-columns: 1fr; }
+            .sys-grid { grid-template-columns: 1fr 1fr; }
+            .header-title { font-size: 16px; }
+            .stat-value { font-size: 22px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="loading-overlay" id="loadingOverlay">
+    <div class="loading-spinner"></div>
+</div>
+
+<div class="header">
+    <div class="header-left">
+        <div>
+            <div class="header-title">NEXUS FCT <span>MONITOR</span></div>
+            <div class="header-sub">POWERED BY ZENIX-ALLY &middot; <span id="headerTarget">{{ target_host }}:{{ target_port }}</span></div>
+        </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:16px;">
+        <div class="uptime-display" id="uptimeDisplay">-</div>
+        <div class="status-badge offline" id="statusBadge">
+            <span class="status-dot offline" id="statusDot"></span>
+            <span id="statusText">DISCONNECTED</span>
+        </div>
+    </div>
+</div>
+
+<div class="grid grid-top">
+    <div class="card">
+        <div class="card-title">System Resources</div>
+        <div class="sys-grid" id="sysGrid">
+            <div class="sys-item">
+                <div class="sys-label">CPU</div>
+                <div class="sys-value" id="cpuValue">-</div>
+                <div class="progress-bar"><div class="progress-fill green" id="cpuBar" style="width:0%"></div></div>
+            </div>
+            <div class="sys-item">
+                <div class="sys-label">Memory</div>
+                <div class="sys-value" id="memValue">-</div>
+                <div class="progress-bar"><div class="progress-fill green" id="memBar" style="width:0%"></div></div>
+            </div>
+            <div class="sys-item">
+                <div class="sys-label">Disk</div>
+                <div class="sys-value" id="diskValue">-</div>
+                <div class="progress-bar"><div class="progress-fill green" id="diskBar" style="width:0%"></div></div>
+            </div>
+            <div class="sys-item">
+                <div class="sys-label">Load Average</div>
+                <div class="sys-value" id="loadValue" style="font-size:14px;">-</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-title">Log Statistics</div>
+        <div class="stat-row">
+            <div class="stat-item">
+                <div class="stat-value blue" id="statReceived">0</div>
+                <div class="stat-label">Received</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value green" id="statAnalyzed">0</div>
+                <div class="stat-label">Analyzed</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value yellow" id="statPending">0</div>
+                <div class="stat-label">Pending</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value red" id="statDailyFail">0</div>
+                <div class="stat-label">Today FAIL</div>
+            </div>
+        </div>
+        <div style="margin-top:12px;display:flex;align-items:center;justify-content:space-between;padding:0 4px;">
+            <div>
+                <span style="font-size:12px;color:var(--text-dim);">Total FAIL:</span>
+                <span style="font-family:var(--mono);font-size:16px;font-weight:600;color:var(--red);margin-left:6px;" id="totalFail">0</span>
+            </div>
+            <div>
+                <span style="font-size:12px;color:var(--text-dim);">Date:</span>
+                <span style="font-family:var(--mono);font-size:14px;margin-left:6px;" id="dailyDate">-</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="grid grid-machines" style="margin-top:16px;">
+    <div class="card">
+        <div class="card-title">Transfer Speed</div>
+        <div class="speed-display">
+            <div class="speed-value" id="speedValue">0 B/s</div>
+            <div class="speed-label">Current transfer rate</div>
+        </div>
+    </div>
+</div>
+
+<div class="grid grid-machines" style="margin-top:16px;">
+    <div class="card">
+        <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;">
+            <span>Machine Status</span>
+            <span style="font-size:12px;font-weight:400;" id="machineSummary">-</span>
+        </div>
+        <table class="machine-table">
+            <thead>
+                <tr>
+                    <th>Machine</th>
+                    <th>IP</th>
+                    <th>Status</th>
+                    <th>State</th>
+                    <th>Last Heartbeat</th>
+                </tr>
+            </thead>
+            <tbody id="machineBody">
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="grid grid-bottom" style="margin-top:16px;">
+    <div class="card">
+        <div class="card-title">Real-time Activity</div>
+        <div class="activity-log" id="activityLog">
+            <div class="empty-state">
+                <div class="icon">&#9679;</div>
+                <div>Waiting for data...</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-title">Server Info</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            <div class="sys-item">
+                <div class="sys-label">Start Time</div>
+                <div class="sys-value" id="serverStart" style="font-size:14px;">-</div>
+            </div>
+            <div class="sys-item">
+                <div class="sys-label">Uptime</div>
+                <div class="sys-value" id="serverUptime" style="font-size:14px;">-</div>
+            </div>
+            <div class="sys-item">
+                <div class="sys-label">Port</div>
+                <div class="sys-value" id="serverPort" style="font-size:14px;">-</div>
+            </div>
+            <div class="sys-item">
+                <div class="sys-label">Bytes Received</div>
+                <div class="sys-value" id="bytesReceived" style="font-size:14px;">-</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const MACHINE_NAMES = {
+    "PEU_G49_FCT1_01": "FCT1", "PEU_G49_FCT2_01": "FCT2",
+    "PEU_G49_FCT3_01": "FCT3", "PEU_G49_FCT4_01": "FCT4",
+    "PEU_G49_FCT5_01": "FCT5", "PEU_G49_FCT6_01": "FCT6",
+};
+const MACHINE_IPS = {
+    "PEU_G49_FCT1_01": "172.28.55.11", "PEU_G49_FCT2_01": "172.28.55.12",
+    "PEU_G49_FCT3_01": "172.28.55.13", "PEU_G49_FCT4_01": "172.28.55.14",
+    "PEU_G49_FCT5_01": "172.28.55.15", "PEU_G49_FCT6_01": "172.28.55.16",
+};
+const ALL_MACHINE_IDS = Object.keys(MACHINE_NAMES);
+
+function fmtSize(bytes) {
+    if (!bytes || bytes === 0) return '0 B';
+    if (bytes >= 1073741824) return (bytes / 1073741824).toFixed(1) + ' GB';
+    if (bytes >= 1048576) return (bytes / 1048576).toFixed(1) + ' MB';
+    if (bytes >= 1024) return (bytes / 1024).toFixed(0) + ' KB';
+    return bytes + ' B';
+}
+
+function barColor(val) {
+    if (val === null || val === undefined) return 'green';
+    if (val >= 85) return 'red';
+    if (val >= 60) return 'yellow';
+    return 'green';
+}
+
+function updateDashboard(data) {
+    const badge = document.getElementById('statusBadge');
+    const dot = document.getElementById('statusDot');
+    const text = document.getElementById('statusText');
+
+    if (!data) {
+        badge.className = 'status-badge offline';
+        dot.className = 'status-dot offline';
+        text.textContent = 'DISCONNECTED';
+        return;
+    }
+
+    badge.className = 'status-badge online';
+    dot.className = 'status-dot online';
+    text.textContent = 'CONNECTED';
+
+    const sys = data.system || {};
+    const metrics = data.metrics || {};
+    const machines = data.machines || {};
+    const server = data.server || {};
+
+    // CPU
+    const cpu = sys.cpu_percent;
+    document.getElementById('cpuValue').textContent = cpu !== null && cpu !== undefined ? cpu.toFixed(1) + '%' : 'N/A';
+    const cpuBar = document.getElementById('cpuBar');
+    cpuBar.style.width = (cpu || 0) + '%';
+    cpuBar.className = 'progress-fill ' + barColor(cpu);
+
+    // Memory
+    const mem = sys.memory_percent;
+    document.getElementById('memValue').textContent = mem !== null && mem !== undefined ? mem.toFixed(1) + '%' : 'N/A';
+    const memBar = document.getElementById('memBar');
+    memBar.style.width = (mem || 0) + '%';
+    memBar.className = 'progress-fill ' + barColor(mem);
+
+    // Disk
+    const disk = sys.disk_percent;
+    document.getElementById('diskValue').textContent = disk !== null && disk !== undefined ? disk.toFixed(1) + '%' : 'N/A';
+    const diskBar = document.getElementById('diskBar');
+    diskBar.style.width = (disk || 0) + '%';
+    diskBar.className = 'progress-fill ' + barColor(disk);
+
+    // Load
+    const load = sys.load_avg;
+    document.getElementById('loadValue').textContent = load ? load.join(', ') : 'N/A';
+
+    // Stats
+    const received = metrics.total_received || 0;
+    const analyzed = metrics.total_analyzed || 0;
+    const pending = Math.max(0, received - analyzed);
+    const dailyFail = metrics.daily_fail || 0;
+    const totalFail = metrics.total_fail || 0;
+
+    document.getElementById('statReceived').textContent = received.toLocaleString();
+    document.getElementById('statAnalyzed').textContent = analyzed.toLocaleString();
+    document.getElementById('statPending').textContent = pending.toLocaleString();
+    document.getElementById('statDailyFail').textContent = dailyFail.toLocaleString();
+    document.getElementById('totalFail').textContent = totalFail.toLocaleString();
+    document.getElementById('dailyDate').textContent = metrics.daily_date || '-';
+
+    // Speed
+    document.getElementById('speedValue').textContent = metrics.transfer_speed_display || '0 B/s';
+
+    // Server info
+    document.getElementById('serverStart').textContent = server.start_time ? server.start_time.slice(0, 19) : '-';
+    document.getElementById('serverUptime').textContent = server.uptime || '-';
+    document.getElementById('serverPort').textContent = server.port || '-';
+    document.getElementById('bytesReceived').textContent = fmtSize(metrics.bytes_received);
+    document.getElementById('uptimeDisplay').textContent = 'Uptime: ' + (server.uptime || '-');
+
+    // Machines
+    const machineList = machines.machines || [];
+    const seenIds = new Set();
+    let tbody = document.getElementById('machineBody');
+    tbody.innerHTML = '';
+
+    for (const m of machineList) {
+        const mid = m.machine_id || '';
+        seenIds.add(mid);
+        const name = MACHINE_NAMES[mid] || mid;
+        const ip = MACHINE_IPS[mid] || m.ip || '-';
+        const status = (m.online_status || 'OFFLINE').toLowerCase();
+        const state = m.display_state || '-';
+        const hb = (m.timestamp || m.last_heartbeat || '').slice(-8) || '-';
+        tbody.innerHTML +=
+            '<tr><td><strong>' + name + '</strong></td>' +
+            '<td style="font-family:var(--mono);font-size:13px;color:var(--text-dim);">' + ip + '</td>' +
+            '<td><div class="machine-status"><span class="machine-dot ' + status + '"></span>' + status.toUpperCase() + '</div></td>' +
+            '<td>' + state + '</td>' +
+            '<td style="font-family:var(--mono);font-size:13px;color:var(--text-dim);">' + hb + '</td></tr>';
+    }
+
+    for (const mid of ALL_MACHINE_IDS) {
+        if (!seenIds.has(mid)) {
+            const name = MACHINE_NAMES[mid];
+            const ip = MACHINE_IPS[mid];
+            tbody.innerHTML +=
+                '<tr style="opacity:0.5;"><td><strong>' + name + '</strong></td>' +
+                '<td style="font-family:var(--mono);font-size:13px;color:var(--text-dim);">' + ip + '</td>' +
+                '<td><div class="machine-status"><span class="machine-dot offline"></span>OFFLINE</div></td>' +
+                '<td>-</td>' +
+                '<td style="font-family:var(--mono);font-size:13px;color:var(--text-dim);">-</td></tr>';
+        }
+    }
+
+    const online = machines.online || 0;
+    const stale = machines.stale || 0;
+    const offline = machines.offline || 0;
+    const total = online + stale + offline;
+    document.getElementById('machineSummary').textContent =
+        'Online: ' + online + '  Stale: ' + stale + '  Offline: ' + offline + '  Total: ' + total;
+
+    // Activity
+    const uploads = metrics.recent_uploads || [];
+    const log = document.getElementById('activityLog');
+    if (uploads.length === 0) {
+        log.innerHTML = '<div class="empty-state"><div class="icon">&#9679;</div><div>Waiting for data...</div></div>';
+    } else {
+        let html = '';
+        for (let i = uploads.length - 1; i >= Math.max(0, uploads.length - 30); i--) {
+            const entry = uploads[i];
+            const t = (entry.time || '').slice(-8);
+            const event = entry.event || '';
+            const fname = entry.filename || '';
+            const mid = entry.machine_id || '';
+            const shortName = MACHINE_NAMES[mid] || mid;
+            const size = entry.size || 0;
+            const result = entry.result || '-';
+
+            let eventClass = '';
+            let eventText = '';
+            if (event === 'RECEIVED') {
+                eventClass = 'new';
+                eventText = 'NEW';
+            } else if (result === 'FAIL') {
+                eventClass = 'fail';
+                eventText = 'FAIL';
+            } else {
+                eventClass = 'ok';
+                eventText = 'OK';
+            }
+
+            const sizeStr = size >= 1048576 ? (size / 1048576).toFixed(1) + 'MB' :
+                           size >= 1024 ? (size / 1024).toFixed(0) + 'KB' :
+                           size + 'B';
+
+            html += '<div class="activity-item">' +
+                '<span class="activity-time">' + t + '</span>' +
+                '<span class="activity-event ' + eventClass + '">' + eventText + '</span>' +
+                '<span class="activity-content">' + fname + ' <span class="activity-machine">(' + shortName + ', ' + sizeStr + ')</span></span>' +
+                '</div>';
+        }
+        log.innerHTML = html;
+    }
+}
+
+async function fetchStatus() {
+    try {
+        const resp = await fetch('/api/status');
+        const json = await resp.json();
+        if (json.ok && json.data) {
+            updateDashboard(json.data);
+        } else {
+            updateDashboard(null);
+        }
+    } catch (e) {
+        updateDashboard(null);
+    }
+}
+
+document.getElementById('loadingOverlay').classList.add('hidden');
+fetchStatus();
+setInterval(fetchStatus, 2000);
+</script>
+</body>
+</html>

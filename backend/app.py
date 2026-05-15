@@ -6,9 +6,9 @@ import sys
 import json
 import math
 from datetime import datetime
-import functools # [优化点新增]
-import time # [优化点新增]
-from pathlib import Path # [新增] 用于跨平台路径处理
+import functools
+import time
+from pathlib import Path
 
 try:
     from flask import Flask, jsonify, make_response, render_template, request, Response
@@ -23,7 +23,6 @@ PROJECT_ROOT = os.path.abspath(os.path.join(BASE_DIR, ".."))
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
-# [修改点] 适配 Ubuntu 路径逻辑
 _P = Path(PROJECT_ROOT)
 TEMPLATE_DIR = str(_P / "frontend" / "templates")
 STATIC_DIR = str(_P / "frontend" / "static")
@@ -58,7 +57,6 @@ app = Flask(
 app.jinja_env.auto_reload = True
 app.config['TEMPLATES_AUTO_RELOAD'] = True
 
-# [优化点 3] 覆盖 Flask 原生的 jsonify 行为，使用紧凑型序列化，减少网络 I/O 体积
 app.config['JSONIFY_PRETTYPRINT_REGULAR'] = False 
 
 try:
@@ -77,11 +75,6 @@ except Exception:
     build_top_fail = None
 
 try:
-    from backend.rules.station_risk_rules import build_station_risk
-except Exception:
-    build_station_risk = None
-
-try:
     from backend.rules.limit_compare import compare_limits, load_spec
     LIMIT_COMPARE_AVAILABLE = True
 except Exception:
@@ -89,7 +82,6 @@ except Exception:
     load_spec = None
     LIMIT_COMPARE_AVAILABLE = False
 
-# [新增] 数据库模块导入
 try:
     from backend.database import (
         init_db, save_telemetry, get_telemetry_summary,
@@ -168,7 +160,7 @@ def sort_records_latest_first(records):
 
 
 # ==============================
-# [优化点 1 核心] 目录状态缓存控制
+# 目录状态缓存控制
 # ==============================
 def get_dir_mtime(path):
     """获取目录的最后修改时间（秒级时间戳），用于判断是否有新日志文件产生"""
@@ -198,7 +190,7 @@ def safe_load_records():
 
 
 # ==============================
-# [新增] DB 同步辅助函数
+# DB 同步辅助函数
 # ==============================
 def sync_records_to_db(records=None):
     """将当前内存中的解析记录同步到 SQLite DB。
@@ -218,11 +210,11 @@ def sync_records_to_db(records=None):
 def get_db_sync_status():
     """返回 DB 同步状态（当前日志文件数 vs DB 记录数）"""
     if not DB_AVAILABLE:
-        return {"available": False, "error": DB_IMPORT_ERROR if 'DB_IMPORT_ERROR' in dir() else "unknown"}
+        return {"available": False, "error": DB_IMPORT_ERROR if 'DB_IMPORT_ERROR' in globals() else "unknown"}
     try:
         import sqlite3
         records = safe_load_records()
-        db_path = os.path.join(PROJECT_ROOT, "cache", "log_analysis.db")
+        db_path = os.path.join(PROJECT_ROOT, "data", "log_analysis.db")
         if not os.path.exists(db_path):
             return {"available": True, "file_count": len(records), "db_count": 0, "db_path": db_path}
         conn = sqlite3.connect(db_path)
@@ -596,7 +588,7 @@ def api_telemetry_push():
     data = normalize_machine_payload(request.get_json(silent=True))
     TELEMETRY_CACHE[data["machine_id"]] = data
     save_telemetry_cache()
-    # [新增] 双写 DB：遥测数据同时写入 SQLite
+    # 双写 DB：遥测数据同时写入 SQLite
     if DB_AVAILABLE and save_telemetry:
         try:
             save_telemetry(data["machine_id"], data)
@@ -608,7 +600,7 @@ def api_telemetry_push():
 def api_telemetry_latest(): return jsonify(build_machine_summary())
 
 # ============================================================
-# [新增] 数据库查询端点 — 不替代原有 API，作为并行通道
+# 数据库查询端点 — 不替代原有 API，作为并行通道
 # ============================================================
 
 @app.route("/api/db/status")
@@ -685,6 +677,11 @@ def _compute_transfer_speed():
 
 
 def _compute_analyzed_stats():
+    _cache = getattr(_compute_analyzed_stats, "_cache", None)
+    _cache_time = getattr(_compute_analyzed_stats, "_cache_time", 0)
+    now = time.time()
+    if _cache is not None and now - _cache_time < 5:
+        return _cache
     try:
         records = safe_load_records()
         total_analyzed = len(records)
@@ -698,7 +695,10 @@ def _compute_analyzed_stats():
                 file_time = str(r.get("time") or r.get("file_mtime") or "")
                 if file_time.startswith(today):
                     daily_fail += 1
-        return total_analyzed, total_fail, daily_fail, len(SERVER_METRICS.get("recent_uploads", []))
+        result = (total_analyzed, total_fail, daily_fail, len(SERVER_METRICS.get("recent_uploads", [])))
+        _compute_analyzed_stats._cache = result
+        _compute_analyzed_stats._cache_time = now
+        return result
     except Exception:
         return 0, 0, 0, 0
 
@@ -805,12 +805,12 @@ if __name__ == "__main__":
     os.makedirs(str(_P / "cache"), exist_ok=True)
     SERVER_METRICS["start_time"] = now_text()
     load_telemetry_cache()
-    # [新增] 初始化数据库
+    # 初始化数据库
     if DB_AVAILABLE and init_db:
         try:
             init_db()
-            print(f"[DB] Database initialized at {os.path.join(PROJECT_ROOT, 'cache', 'log_analysis.db')}")
+            print(f"[DB] Database initialized at {os.path.join(PROJECT_ROOT, 'data', 'log_analysis.db')}")
         except Exception as _e:
             print(f"[DB] Init failed: {_e}")
-    # [修改点] 开启多线程并关闭调试模式，优化 Ubuntu 服务器响应性
+    # 开启多线程并关闭调试模式，优化 Ubuntu 服务器响应性
     app.run(host="0.0.0.0", port=SERVER_PORT, debug=False, threaded=True)

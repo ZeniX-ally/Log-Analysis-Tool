@@ -370,7 +370,7 @@ def build_dashboard(data, host, port):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="NEXUS FCT Server Monitor")
+    parser = argparse.ArgumentParser(description="POWERED BY ZENIX-ALLY")
     parser.add_argument("--host", default="127.0.0.1", help="服务器 IP (默认: 127.0.0.1)")
     parser.add_argument("--port", type=int, default=59488, help="服务器端口 (默认: 59488)")
     parser.add_argument("--interval", type=float, default=2.0, help="刷新间隔秒数 (默认: 2.0)")
