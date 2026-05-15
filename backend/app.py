@@ -28,7 +28,7 @@ _P = Path(PROJECT_ROOT)
 TEMPLATE_DIR = str(_P / "frontend" / "templates")
 STATIC_DIR = str(_P / "frontend" / "static")
 LOG_DIR = str(_P / "data" / "logs")
-CACHE_FILE = str(_P / "data" / "telemetry_cache.json")
+CACHE_FILE = str(_P / "cache" / "telemetry_cache.json")
 SPEC_CACHE_FILE = str(_P / "data" / "spec_cache.json")
 
 ONLINE_SECONDS = 5
@@ -210,7 +210,7 @@ def get_db_sync_status():
     try:
         import sqlite3
         records = safe_load_records()
-        db_path = os.path.join(PROJECT_ROOT, "data", "log_analysis.db")
+        db_path = os.path.join(PROJECT_ROOT, "cache", "log_analysis.db")
         if not os.path.exists(db_path):
             return {"available": True, "file_count": len(records), "db_count": 0, "db_path": db_path}
         conn = sqlite3.connect(db_path)
@@ -657,13 +657,14 @@ def api_db_telemetry():
 
 if __name__ == "__main__":
     os.makedirs(LOG_DIR, exist_ok=True)
+    os.makedirs(str(_P / "cache"), exist_ok=True)
     load_telemetry_cache()
     # [新增] 初始化数据库
     if DB_AVAILABLE and init_db:
         try:
             init_db()
-            print(f"[DB] Database initialized at {os.path.join(PROJECT_ROOT, 'data', 'log_analysis.db')}")
+            print(f"[DB] Database initialized at {os.path.join(PROJECT_ROOT, 'cache', 'log_analysis.db')}")
         except Exception as _e:
             print(f"[DB] Init failed: {_e}")
     # [修改点] 开启多线程并关闭调试模式，优化 Ubuntu 服务器响应性
-    app.run(host="0.0.0.0", port=5000, debug=True, threaded=True)
+    app.run(host="0.0.0.0", port=5000, debug=False, threaded=True)
