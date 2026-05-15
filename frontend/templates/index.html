@@ -1,50 +1,51 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>FCT 效能诊断中枢 | TE_NEXUS</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <style>
-        /* ==========================================
-           1. 特斯拉经典极简平面视觉引擎 (Tesla Flat Dark UI)
-        ========================================== */
         :root {
-            --bg-base: #000000;        
-            --surface: #171717;        
-            --surface-hover: #222222;  
-            --border-color: #2a2a2a;   
-            
-            --text-main: #ffffff;      
-            --text-muted: #888888;     
-            
-            --tesla-red: #E31937;      
-            --tesla-pass: #ffffff;     
-            --tesla-abort: #444444;    
-            
+            --bg-base: #000000;
+            --surface: #171717;
+            --surface-hover: #222222;
+            --border-color: #2a2a2a;
+            --text-main: #ffffff;
+            --text-muted: #888888;
+            --tesla-red: #E31937;
+            --tesla-pass: #ffffff;
+            --tesla-abort: #444444;
+            --glow-red: rgba(227, 25, 55, 0.15);
+            --glow-white: rgba(255, 255, 255, 0.04);
+            --glow-ambient: rgba(255, 255, 255, 0.03);
             --radius-lg: 24px;
             --radius-md: 12px;
             --radius-sm: 6px;
-
             --font-ui: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             --font-num: "JetBrains Mono", "Consolas", monospace;
-            
             --easing-physics: cubic-bezier(0.2, 0.8, 0.2, 1);
         }
-
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        
-        body { 
-            background-color: var(--bg-base);
-            color: var(--text-main); 
-            font-family: var(--font-ui); 
-            font-size: 15px; 
-            overflow: hidden; 
-            -webkit-font-smoothing: antialiased; 
+        body {
+            background: radial-gradient(ellipse at 50% 0%, #0d0d0d 0%, #000000 70%);
+            color: var(--text-main);
+            font-family: var(--font-ui);
+            font-size: 15px;
+            overflow: hidden;
+            -webkit-font-smoothing: antialiased;
         }
-
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.015'/%3E%3C/svg%3E");
+            pointer-events: none;
+            z-index: 0;
+        }
         @keyframes panelFadeIn {
             0% { opacity: 0; transform: translateY(20px); }
             100% { opacity: 1; transform: translateY(0); }
@@ -54,145 +55,146 @@
             0% { opacity: 0; transform: scale(0.95) translateY(10px); }
             100% { opacity: 1; transform: scale(1) translateY(0); }
         }
-
         .surface-panel {
             background: var(--surface);
             border: 1px solid var(--border-color);
             border-radius: var(--radius-lg);
-        }
-
-        /* ==========================================
-           [中枢核心升级]: 悬浮白光光晕引擎 (防裁切版)
-        ========================================== */
-        .hover-invert-float {
-            /* 预留光晕占位，确保过渡动画如丝般顺滑 */
-            filter: invert(0) hue-rotate(0deg) drop-shadow(0 0px 0px rgba(255, 255, 255, 0));
-            transition: transform 0.4s var(--easing-physics), 
-                        filter 0.4s var(--easing-physics);
-            will-change: transform, filter;
             position: relative;
         }
-        
-        .hover-invert-float:hover {
-            transform: translateY(-8px);
-            /* 魔法链路重构：
-               1. invert(1) + hue-rotate(180deg) 负责完美的卡片反色。
-               2. 在反色之后，叠加 drop-shadow 投射大半径的纯白光晕 (255,255,255)。
-               3. rgba(255,255,255,0.45) 提供了恰到好处的散射质感，完美复原你的设计图！
-            */
-            filter: invert(1) hue-rotate(180deg) drop-shadow(0 20px 40px rgba(255, 255, 255, 0.45));
-            z-index: 20; 
+        .surface-panel::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 10%;
+            right: 10%;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent);
+            pointer-events: none;
         }
-
+        .hover-glow {
+            position: relative;
+            transition: transform 0.5s var(--easing-physics),
+                        box-shadow 0.5s var(--easing-physics),
+                        border-color 0.5s var(--easing-physics),
+                        background 0.5s var(--easing-physics);
+            will-change: transform, box-shadow;
+            z-index: 1;
+        }
+        .hover-glow:hover {
+            transform: translateY(-6px);
+            background: #ffffff !important;
+            border-color: rgba(255, 255, 255, 0.6);
+            box-shadow:
+                0 24px 80px rgba(0, 0, 0, 0.18),
+                0 0 30px rgba(255, 255, 255, 0.30),
+                0 0 60px rgba(255, 255, 255, 0.18),
+                0 0 120px rgba(255, 255, 255, 0.08);
+        }
+        .hover-glow:hover,
+        .hover-glow:hover * {
+            color: #000 !important;
+        }
+        .hover-glow:hover .pill-fail,
+        .hover-glow:hover .pill-interrupt {
+            color: #fff !important;
+        }
+        .hover-glow:hover th {
+            color: var(--text-muted) !important;
+        }
+        .hover-glow:hover tr:hover td {
+            background: rgba(227, 25, 55, 0.18) !important;
+        }
+        .hover-glow:hover input {
+            background: #ffffff !important;
+            border-color: #cccccc !important;
+        }
         .text-truncate {
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
         }
-
-        .app { height: 100vh; display: grid; grid-template-columns: 280px 1fr; gap: 32px; padding: 24px 32px 24px 24px; }
-        
+        .app { height: 100vh; display: grid; grid-template-columns: 280px 1fr; gap: 32px; padding: 24px 32px 24px 24px; position: relative; z-index: 1; }
         .sidebar { padding: 40px 24px; display: flex; flex-direction: column; }
-        
         .brand { font-size: 32px; font-weight: 800; color: #fff; letter-spacing: -0.5px; }
         .brand-sub { color: var(--text-muted); font-size: 13px; margin-top: 4px; margin-bottom: 60px; font-family: var(--font-num); font-weight: 600;}
-        
-        .nav-item { 
-            padding: 16px 20px; border-radius: var(--radius-md); color: var(--text-muted); 
+        .nav-item {
+            padding: 16px 20px; border-radius: var(--radius-md); color: var(--text-muted);
             cursor: pointer; margin-bottom: 8px; font-weight: 600; font-size: 16px;
-            transition: all 0.3s var(--easing-physics); 
+            transition: all 0.3s var(--easing-physics);
             display: flex; align-items: center;
         }
         .nav-item::before {
-            content: ''; display: block; width: 4px; height: 18px; 
+            content: ''; display: block; width: 4px; height: 18px;
             background: transparent; border-radius: 2px; margin-right: 12px;
             transition: background 0.3s var(--easing-physics);
         }
         .nav-item.active { background: var(--bg-base); color: #fff; }
         .nav-item.active::before { background: var(--tesla-red); }
         .nav-item:hover:not(.active) { background: var(--surface-hover); color: #fff; }
-
         .main { overflow-y: auto; height: calc(100vh - 48px); display: flex; flex-direction: column; padding-right: 8px;}
-        
         .topbar { margin-bottom: 40px; flex-shrink: 0; display: flex; flex-direction: column; gap: 6px;}
         .title { font-size: 40px; font-weight: 800; color: #fff; letter-spacing: -1px;}
         .subtitle { color: var(--text-muted); font-size: 14px; font-family: var(--font-num); font-weight: 600;}
-        
         .panel { display: none; flex: 1; flex-direction: column; }
-        .panel.active { 
-            display: flex; 
+        .panel.active {
+            display: flex;
             animation: panelFadeIn 0.5s var(--easing-physics) forwards;
             will-change: opacity, transform;
         }
-
-        /* ==========================================
-           [靶向修复 2]: 解决 FPY 等核心数值横向截断
-        ========================================== */
-        .cards { 
-            display: grid; 
-            /* 废弃生硬的 6 等分，启用柔性自适应网格，保证极窄屏幕下也能换行展示而不截断 */
-            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); 
-            gap: 16px; 
-            margin-bottom: 24px; 
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
             flex-shrink: 0;
         }
         .card { padding: 24px; display: flex; flex-direction: column; justify-content: space-between; min-width: 0; }
-        
         .card-name { color: var(--text-muted); font-size: 13px; font-weight: 600; margin-bottom: 16px;}
-        
-        .card-value { 
-            color: #fff; 
-            /* 启用 clamp() 响应式字号：最小 28px，随着屏幕缩放自适应，最大 40px */
-            font-size: clamp(28px, 2.5vw, 40px); 
-            font-weight: 700; 
-            font-family: var(--font-num); 
-            letter-spacing: -1px; 
-            padding-bottom: 2px; 
+        .card-value {
+            color: #fff;
+            font-size: clamp(28px, 2.5vw, 40px);
+            font-weight: 700;
+            font-family: var(--font-num);
+            letter-spacing: -1px;
+            padding-bottom: 2px;
         }
         .val-red { color: var(--tesla-red); }
-
         .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px; }
         .box { padding: 32px; display: flex; flex-direction: column; min-width: 0; }
         .box-title { color: #fff; font-weight: 700; font-size: 20px; margin-bottom: 32px; letter-spacing: -0.5px;}
         .chart-container { width: 100%; height: 320px; }
-
         .table-scroll { overflow-y: auto; }
         table { width: 100%; border-collapse: collapse; text-align: left; table-layout: fixed;}
-        th { 
-            color: var(--text-muted); font-size: 13px; padding: 16px 24px; 
-            background: var(--surface); border-bottom: 1px solid var(--border-color); 
+        th {
+            color: var(--text-muted); font-size: 13px; padding: 16px 24px;
+            background: var(--surface); border-bottom: 1px solid var(--border-color);
             position: sticky; top: 0; z-index: 2; font-weight: 600;
         }
         td { padding: 20px 24px; border-bottom: 1px solid var(--border-color); font-size: 15px; color: #fff; font-weight: 500; }
         td.mono { font-family: var(--font-num); font-size: 14px; font-weight: 600; color: #fff; }
         tr { transition: background 0.2s; }
         tr:hover td { background: var(--surface-hover); cursor: pointer;}
-        
-        .pill { 
-            display: inline-block; min-width: 80px; text-align: center; padding: 6px 12px; 
+        .pill {
+            display: inline-block; min-width: 80px; text-align: center; padding: 6px 12px;
             border-radius: var(--radius-sm); font-size: 13px; font-weight: 700; font-family: var(--font-ui);
         }
         .pill-pass { color: #000; background: var(--tesla-pass); }
         .pill-fail { color: #fff; background: var(--tesla-red); }
         .pill-interrupt { color: #fff; background: var(--tesla-abort); }
-
         .search-row { display: flex; gap: 16px; margin-bottom: 24px; }
-        input { 
-            background: var(--bg-base); border: 1px solid var(--border-color); color: #fff; 
-            border-radius: var(--radius-md); padding: 16px 24px; flex: 1; outline:none; 
+        input {
+            background: var(--bg-base); border: 1px solid var(--border-color); color: #fff;
+            border-radius: var(--radius-md); padding: 16px 24px; flex: 1; outline:none;
             font-size: 16px; font-family: var(--font-ui); transition: border-color 0.3s;
         }
         input:focus { border-color: #555; }
         input::placeholder { color: #555; }
-        
-        button { 
+        button {
             background: var(--text-main); color: var(--bg-base); border: none;
             padding: 0 40px; border-radius: var(--radius-md); cursor: pointer; font-weight: 700; font-size: 16px;
             transition: all 0.3s var(--easing-physics);
         }
         button:hover { transform: scale(0.98); background: #e0e0e0; }
-
-        /* 模态框 */
         .modal-mask {
             position: fixed; inset: 0; background: rgba(0, 0, 0, 0.8); z-index: 9999; display: flex; align-items: center; justify-content: center;
             animation: modalMaskIn 0.3s ease forwards;
@@ -203,46 +205,192 @@
             animation: modalWindowScale 0.4s var(--easing-physics) forwards; will-change: opacity, transform;
         }
         .modal-header { height: 80px; padding: 0 40px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; border-bottom: 1px solid var(--border-color); background: var(--bg-base);}
-        
         .modal-close {
-            width: 44px; height: 44px; border: none; border-radius: 50%; background: var(--surface); color: var(--text-main); cursor: pointer; 
+            width: 44px; height: 44px; border: none; border-radius: 50%; background: var(--surface); color: var(--text-main); cursor: pointer;
             display: flex; align-items: center; justify-content: center; transition: all 0.2s; padding: 0;
         }
         .modal-close:hover { background: #333; transform: scale(0.9); }
         .modal-body { padding: 40px; overflow-y: auto; flex: 1; }
-        
-        .ai-advice-box { 
+        .ai-advice-box {
             background: var(--bg-base); border: 1px solid var(--border-color); border-left: 6px solid var(--tesla-red);
             padding: 24px 32px; margin-bottom: 40px; border-radius: var(--radius-md); color: #fff; font-size: 16px; line-height: 1.6; font-weight: 500;
         }
         .quadrant-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; margin-bottom: 40px; }
         .quadrant-box { background: var(--bg-base); border-radius: var(--radius-md); padding: 24px 32px; color: var(--text-muted); font-size: 14px; font-weight: 600; }
         .quadrant-box b { font-family: var(--font-num); font-size: 48px; display: block; margin-top: 12px; font-weight: 700; letter-spacing: -2px; line-height: 1; color: #fff;}
-
         .machine-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 24px; padding-bottom: 40px;}
         .machine-card { padding: 32px; }
         .machine-line { display: flex; justify-content: space-between; color: var(--text-muted); font-size: 15px; padding: 16px 0; border-bottom: 1px solid var(--border-color); font-weight: 500;}
         .machine-line:last-child { border-bottom: none; padding-bottom: 0;}
         .machine-line b { font-family: var(--font-num); color: #fff; font-weight: 600; font-size: 16px;}
-        
-        .spc-dynamic-grid { 
-            display: grid; 
-            grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); 
-            gap: 28px; 
-            overflow: visible; 
-            padding-bottom: 60px; 
-            padding-top: 12px; 
+        .spc-dynamic-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+            gap: 28px;
+            overflow: visible;
+            padding-bottom: 60px;
+            padding-top: 12px;
         }
         .spc-wrapper { background: var(--surface); border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 24px; min-width: 0; }
-
         ::-webkit-scrollbar { width: 10px; height: 10px; }
         ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { 
-            background: rgba(255, 255, 255, 0.15); 
-            border-radius: 10px; 
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 10px;
             border: 3px solid var(--bg-base);
         }
         ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.3); }
+        .mobile-tab-bar {
+            display: none;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 300;
+            background: rgba(0, 0, 0, 0.92);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-top: 1px solid var(--border-color);
+            padding: 6px 0 env(safe-area-inset-bottom, 8px) 0;
+            justify-content: space-around;
+            align-items: center;
+        }
+        .tab-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 2px;
+            padding: 4px 8px;
+            min-width: 56px;
+            cursor: pointer;
+            color: var(--text-muted);
+            transition: color 0.2s;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+        }
+        .tab-item svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+        .tab-item span { font-size: 9px; font-weight: 600; letter-spacing: 0.3px; }
+        .tab-item.active { color: #fff; }
+        .tab-item.active svg { stroke-width: 2.5; }
+        .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.6); z-index: 90; opacity: 0; transition: opacity 0.3s ease; pointer-events: none; }
+        .sidebar-overlay.active { opacity: 1; pointer-events: auto; }        @media (max-width: 768px) {
+            .app { grid-template-columns: 1fr; padding: 0; gap: 0; height: 100vh; overflow: hidden; }
+            .sidebar { display: none; }
+            .mobile-tab-bar { display: flex; }
+            .main { height: 100vh; padding: 0 12px; padding-bottom: 68px; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+            .topbar { margin-bottom: 16px; padding-top: 8px; }
+            .title { font-size: 22px; }
+            .subtitle { font-size: 11px; }
+            .cards { grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 14px; }
+            .card { padding: 12px; }
+            .card-name { font-size: 10px; margin-bottom: 6px; }
+            .card-value { font-size: clamp(16px, 3.5vw, 24px); }
+            .grid-2 { grid-template-columns: 1fr; gap: 12px; margin-bottom: 14px; }
+            .box { padding: 16px; }
+            .box-title { font-size: 15px; margin-bottom: 16px; }
+            .chart-container { height: 200px; }
+            .table-scroll { -webkit-overflow-scrolling: touch; overflow-x: auto; }
+            table { font-size: 12px; }
+            th, td { padding: 10px 12px; white-space: nowrap; }
+            td.mono { font-size: 11px; }
+            .search-row { flex-direction: column; gap: 8px; }
+            input { padding: 12px 14px; font-size: 14px; }
+            button { padding: 10px 16px; width: 100%; font-size: 14px; }
+            .machine-grid { grid-template-columns: 1fr; gap: 12px; padding-bottom: 16px; }
+            .machine-card { padding: 16px; }
+            .spc-dynamic-grid { grid-template-columns: 1fr; gap: 14px; padding-bottom: 20px; }
+            .spc-wrapper { padding: 14px; }
+            .quadrant-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 16px; }
+            .quadrant-box { padding: 14px 16px; }
+            .quadrant-box b { font-size: 28px; }
+            .modal-window { width: 96vw; max-height: 92vh; border-radius: var(--radius-md); }
+            .modal-header { height: 56px; padding: 0 16px; }
+            .modal-header > div { font-size: 15px !important; }
+            .modal-body { padding: 16px; }
+            .ai-advice-box { padding: 14px 16px; margin-bottom: 16px; font-size: 13px; }
+            .limit-panel-spec-row { flex-direction: column; align-items: flex-start; }
+            #failCenterPanel .box:first-child { margin-bottom: 8px !important; padding: 10px !important; }
+            #failCenterPanel .box:first-child .box-title { font-size: 11px !important; margin-bottom: 6px !important; }
+            #failCenterPanel .box:first-child input { font-size: 12px; padding: 8px 10px; min-height: 36px; }
+            #failCenterPanel .box:first-child input::placeholder { font-size: 10px; color: #666; }
+            #failCenterPanel .box:first-child button { font-size: 11px; padding: 8px 12px; min-height: 36px; }
+            #failCenterPanel .box:last-child { padding: 0 !important; border: none !important; background: transparent !important; }
+            #failCenterPanel .box:last-child .box-title { display: none; }
+            #failCenterPanel .table-scroll { display: none; }
+            #failCenterPanel #mobileFailList { display: flex; flex-direction: column; gap: 8px; padding-bottom: 12px; }
+            .mobile-fail-card { background: var(--surface); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 12px 14px; cursor: pointer; transition: all 0.2s ease; -webkit-tap-highlight-color: transparent; display: flex; flex-direction: column; gap: 6px; }
+            .mobile-fail-card:active { transform: scale(0.98); background: var(--surface-hover); }
+            .mobile-fail-card-top { display: flex; align-items: center; justify-content: space-between; }
+            .mobile-fail-card-sn { font-family: var(--font-num); font-size: 14px; font-weight: 700; color: #fff; letter-spacing: -0.3px; }
+            .mobile-fail-card-station { font-size: 11px; color: var(--text-muted); font-weight: 500; }
+            .mobile-fail-card-bottom { display: flex; align-items: center; justify-content: space-between; }
+            .mobile-fail-card-issue { font-size: 11px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; margin-right: 8px; }
+            .mobile-fail-card-time { font-family: var(--font-num); font-size: 10px; color: #555; flex-shrink: 0; }
+            .mobile-fail-card .pill { font-size: 10px !important; min-width: auto !important; padding: 2px 10px !important; }
+            .mobile-fail-empty { text-align: center; padding: 40px 20px; color: var(--text-muted); font-size: 13px; font-weight: 600; }
+            #limitPanel .cards { grid-template-columns: repeat(2, 1fr); gap: 6px; }
+            #limitPanel .cards .card { padding: 8px 10px; }
+            #limitPanel .cards .card-name { font-size: 9px; margin-bottom: 3px; }
+            #limitPanel .cards .card-value { font-size: clamp(12px, 3vw, 17px); letter-spacing: -0.5px; }
+            #limitPanel .cards .card:last-child .card-value { font-size: clamp(11px, 2.5vw, 15px) !important; }
+            #limitPanel .box:first-of-type { margin-bottom: 8px !important; padding: 10px !important; }
+            #limitPanel .box:first-of-type > div:first-child { flex-direction: column; align-items: stretch; gap: 6px; }
+            #limitPanel .box:first-of-type > div:first-child > div:first-child { flex-direction: row; align-items: center; flex-wrap: wrap; gap: 6px; }
+            #limitPanel .box:first-of-type .box-title { font-size: 11px !important; margin-bottom: 0 !important; }
+            #limitPanel .box:first-of-type #specStatus { font-size: 10px !important; word-break: break-all; }
+            #limitPanel .box:first-of-type > div:first-child > div:last-child { flex-direction: row; flex-wrap: wrap; gap: 6px; }
+            #limitPanel .box:first-of-type label { flex: 1; text-align: center; padding: 6px 10px !important; font-size: 11px !important; min-width: 0; }
+            #limitPanel .box:first-of-type button { flex: 1; padding: 6px 10px !important; font-size: 11px !important; min-width: 0; }
+            #limitPanel .box:first-of-type > div:last-child { font-size: 9px !important; padding: 6px 8px !important; max-height: 32px; overflow: hidden; line-height: 1.3 !important; position: relative; cursor: pointer; transition: max-height 0.3s ease; }
+            #limitPanel .box:first-of-type > div:last-child::after { content: '...展开'; position: absolute; right: 6px; bottom: 6px; background: var(--bg-base); padding: 0 4px; font-size: 9px; color: var(--tesla-red); font-weight: 600; }
+            #limitPanel .box:first-of-type > div:last-child.expanded { max-height: 120px; overflow-y: auto; }
+            #limitPanel .box:first-of-type > div:last-child.expanded::after { content: '收起'; }
+            #limitPanel .box:last-child { padding: 0 !important; border: none !important; background: transparent !important; }
+            #limitPanel .box:last-child .box-title { display: none; }
+            #limitPanel .table-scroll { display: none; }
+            #limitPanel #mobileLimitList { display: flex; flex-direction: column; gap: 6px; padding-bottom: 12px; }
+            .mobile-limit-card { background: var(--surface); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 10px 12px; cursor: pointer; transition: all 0.2s ease; -webkit-tap-highlight-color: transparent; display: flex; align-items: center; justify-content: space-between; }
+            .mobile-limit-card:active { transform: scale(0.98); background: var(--surface-hover); }
+            .mobile-limit-card-left { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 0; }
+            .mobile-limit-card-name { font-family: var(--font-num); font-size: 12px; font-weight: 600; color: #fff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+            .mobile-limit-card-detail { font-size: 10px; color: var(--text-muted); }
+            .mobile-limit-card .pill { font-size: 9px !important; min-width: auto !important; padding: 2px 8px !important; flex-shrink: 0; }
+            .mobile-limit-empty { text-align: center; padding: 40px 20px; color: var(--text-muted); font-size: 13px; font-weight: 600; }
+        }
+        @media (max-width: 480px) {
+            .cards { grid-template-columns: repeat(2, 1fr); }
+            .title { font-size: 18px; }
+            .card-value { font-size: clamp(14px, 4.5vw, 20px); }
+            .chart-container { height: 170px; }
+            .machine-card > div:first-child { font-size: 20px !important; }
+            th, td { padding: 6px 8px; font-size: 11px; }
+            #failCenterPanel .box:first-child { padding: 8px !important; }
+            #failCenterPanel .box:first-child .box-title { font-size: 10px !important; margin-bottom: 4px !important; }
+            #failCenterPanel .box:first-child input { font-size: 11px; padding: 6px 8px; min-height: 32px; }
+            #failCenterPanel .box:first-child input::placeholder { font-size: 9px; }
+            #failCenterPanel .box:first-child button { font-size: 10px; padding: 6px 10px; min-height: 32px; }
+            .mobile-fail-card { padding: 10px 12px; gap: 4px; }
+            .mobile-fail-card-sn { font-size: 13px; }
+            .mobile-fail-card-station { font-size: 10px; }
+            .mobile-fail-card-issue { font-size: 10px; }
+            .mobile-fail-card-time { font-size: 9px; }
+            .mobile-fail-card .pill { font-size: 9px !important; padding: 1px 8px !important; }
+            #limitPanel .cards { grid-template-columns: 1fr 1fr; gap: 5px; }
+            #limitPanel .cards .card { padding: 6px 8px; }
+            #limitPanel .cards .card-name { font-size: 8px; margin-bottom: 2px; }
+            #limitPanel .cards .card-value { font-size: clamp(11px, 3vw, 15px); }
+            #limitPanel .box:first-of-type { padding: 8px !important; }
+            #limitPanel .box:first-of-type .box-title { font-size: 10px !important; }
+            #limitPanel .box:first-of-type #specStatus { font-size: 9px !important; }
+            #limitPanel .box:first-of-type label { font-size: 10px !important; padding: 5px 8px !important; }
+            #limitPanel .box:first-of-type button { font-size: 10px !important; padding: 5px 8px !important; }
+            #limitPanel .box:first-of-type > div:last-child { font-size: 8px !important; padding: 5px 6px !important; max-height: 28px; }
+            .mobile-limit-card { padding: 8px 10px; }
+            .mobile-limit-card-name { font-size: 11px; }
+            .mobile-limit-card-detail { font-size: 9px; }
+            .mobile-limit-card .pill { font-size: 8px !important; padding: 1px 6px !important; }
+        }
     </style>
 </head>
 <body>
@@ -250,47 +398,37 @@
     <aside class="sidebar surface-panel">
         <div class="brand text-truncate">Monolith</div>
         <div class="brand-sub">黑碑</div>
-        
         <div class="nav-item active" onclick="switchPanel('overviewPanel', this)">效能监控</div>
         <div class="nav-item" onclick="switchPanel('failCenterPanel', this)">日志检索</div>
         <div class="nav-item" onclick="switchPanel('spcPanel', this)">统计矩阵</div>
         <div class="nav-item" onclick="switchPanel('machinePanel', this)">机台遥测</div>
-        
+        <div class="nav-item" onclick="switchPanel('limitPanel', this)">限值比对</div>
         <div style="margin-top: auto; color: var(--text-muted); font-size: 13px; font-weight: 500; font-family: var(--font-num); line-height: 2;">
             <div style="color: #fff; margin-bottom: 8px; font-family: var(--font-ui); font-weight: 700;">Telemetry Status</div>
             LINK: <span style="color:#fff; font-weight: 700;">SECURE</span><br>
             RENDER: <span style="color:#fff; font-weight: 700;">FLAT_INVERT</span>
         </div>
     </aside>
-
     <main class="main">
+        <div class="sidebar-overlay" onclick="closeSidebar()"></div>
         <div class="topbar">
             <div class="title" id="pageTitle">效能监控大盘</div>
             <div class="subtitle" id="pageSub">SYS.MAIN_DASHBOARD</div>
         </div>
-
         <section id="overviewPanel" class="panel active">
             <div class="cards">
-                <div class="card surface-panel hover-invert-float"><div class="card-name text-truncate">Total Logs</div><div class="card-value" id="statTotal">0</div></div>
-                <div class="card surface-panel hover-invert-float"><div class="card-name text-truncate">FPY (一次通过率)</div><div class="card-value" id="statFpy">0%</div></div>
-                <div class="card surface-panel hover-invert-float"><div class="card-name text-truncate">Retest Rate</div><div class="card-value">0%</div></div>
-                <div class="card surface-panel hover-invert-float"><div class="card-name text-truncate">Pass</div><div class="card-value" id="statPass">0</div></div>
-                <div class="card surface-panel hover-invert-float" style="border-bottom: 4px solid var(--tesla-red);"><div class="card-name text-truncate">Fail</div><div class="card-value val-red" id="statFail">0</div></div>
-                <div class="card surface-panel hover-invert-float"><div class="card-name text-truncate">中断</div><div class="card-value" id="statInterrupt" style="color:var(--text-muted)">0</div></div>
+                <div class="card surface-panel hover-glow"><div class="card-name text-truncate">Total Logs</div><div class="card-value" id="statTotal">0</div></div>
+                <div class="card surface-panel hover-glow"><div class="card-name text-truncate">FPY (一次通过率)</div><div class="card-value" id="statFpy">0%</div></div>
+                <div class="card surface-panel hover-glow"><div class="card-name text-truncate">Retest Rate</div><div class="card-value">0%</div></div>
+                <div class="card surface-panel hover-glow"><div class="card-name text-truncate">Pass</div><div class="card-value" id="statPass">0</div></div>
+                <div class="card surface-panel hover-glow" style="border-bottom: 4px solid var(--tesla-red);"><div class="card-name text-truncate">Fail</div><div class="card-value val-red" id="statFail">0</div></div>
+                <div class="card surface-panel hover-glow"><div class="card-name text-truncate">中断</div><div class="card-value" id="statInterrupt" style="color:var(--text-muted)">0</div></div>
             </div>
-
             <div class="grid-2">
-                <div class="box surface-panel hover-invert-float">
-                    <div class="box-title text-truncate">TOP FAIL PARETO</div>
-                    <div id="paretoChart" class="chart-container"></div>
-                </div>
-                <div class="box surface-panel hover-invert-float">
-                    <div class="box-title text-truncate">CPK预测防治图表</div>
-                    <div id="cpkChart" class="chart-container"></div>
-                </div>
+                <div class="box surface-panel hover-glow"><div class="box-title text-truncate">TOP FAIL PARETO</div><div id="paretoChart" class="chart-container"></div></div>
+                <div class="box surface-panel hover-glow"><div class="box-title text-truncate">CPK预测防治图表</div><div id="cpkChart" class="chart-container"></div></div>
             </div>
-
-            <div class="box surface-panel hover-invert-float" style="flex:1; padding-bottom: 0; overflow:hidden;">
+            <div class="box surface-panel hover-glow" style="flex:1; padding-bottom: 0; overflow:hidden;">
                 <div class="box-title text-truncate" style="margin-bottom: 16px;">REALTIME PIPELINE</div>
                 <div class="table-scroll" style="height: 360px;">
                     <table>
@@ -300,25 +438,24 @@
                 </div>
             </div>
         </section>
-
         <section id="failCenterPanel" class="panel">
-            <div class="box surface-panel hover-invert-float" style="margin-bottom: 24px; flex-shrink: 0;">
+            <div class="box surface-panel hover-glow" style="margin-bottom: 24px; flex-shrink: 0;">
                 <div class="box-title text-truncate" style="margin-bottom: 16px;">FAULT ISOLATION QUERY</div>
                 <div class="search-row" style="margin-bottom: 0;">
-                    <input id="snInput" placeholder="输入 SN 或 机台编号进行溯源..." oninput="filterFailCenter()">
+                    <input id="snInput" placeholder="输入 SN 或机台号进行溯源" oninput="filterFailCenter()">
                     <button>执行检索</button>
                 </div>
             </div>
-            <div class="box surface-panel hover-invert-float" style="flex:1; padding-bottom:0; overflow:hidden;">
+            <div class="box surface-panel hover-glow" style="flex:1; padding-bottom:0; overflow:hidden;">
                 <div class="table-scroll" style="height: 600px;">
                     <table>
                         <thead><tr><th style="width:25%;">SN</th><th style="width:15%;">Station</th><th style="width:15%;">Result</th><th style="width:30%;">Intercept Point</th><th style="width:15%;">Timestamp</th></tr></thead>
                         <tbody id="failCenterBody"><tr><td colspan="5" style="text-align:center; padding: 60px; color: var(--text-muted); font-weight: 600;">NO ANOMALIES DETECTED</td></tr></tbody>
                     </table>
                 </div>
+                <div id="mobileFailList"></div>
             </div>
         </section>
-
         <section id="spcPanel" class="panel">
             <div class="box surface-panel" style="height:auto; display:flex; flex-direction:column; overflow:visible;">
                 <div class="box-title text-truncate" style="margin-bottom: 16px;">STATISTICAL PROCESS CONTROL</div>
@@ -326,352 +463,555 @@
                     <input type="text" id="spcSearchInput" placeholder="输入参数名称进行矩阵过滤 (留空展示全量测试项)..." oninput="filterSpcMatrix()">
                 </div>
                 <div id="spcGrid" class="spc-dynamic-grid">
-                    <div style="color:var(--text-muted); text-align:center; grid-column: 1 / -1; padding: 80px; font-weight: 600;">
-                        EXTRACTING MATRIX DATA...
-                    </div>
+                    <div style="color:var(--text-muted); text-align:center; grid-column: 1 / -1; padding: 80px; font-weight: 600;">EXTRACTING MATRIX DATA...</div>
                 </div>
             </div>
         </section>
-
         <section id="machinePanel" class="panel">
             <div id="machineGrid" class="machine-grid">
                 <div style="color:var(--text-muted); padding: 20px; font-weight: 600;">WAITING FOR FLEET HEARTBEAT...</div>
             </div>
         </section>
+        <section id="limitPanel" class="panel">
+            <div class="cards">
+                <div class="card surface-panel hover-glow"><div class="card-name text-truncate">检查工站数</div><div class="card-value" id="lcStations">0</div></div>
+                <div class="card surface-panel hover-glow"><div class="card-name text-truncate">检查测项数</div><div class="card-value" id="lcItems">0</div></div>
+                <div class="card surface-panel hover-glow" id="lcDiscCard" style="border-bottom: 4px solid var(--tesla-red);"><div class="card-name text-truncate" id="lcDiscLabel">不一致测项</div><div class="card-value val-red" id="lcDiscrepancies">0</div></div>
+                <div class="card surface-panel hover-glow"><div class="card-name text-truncate">比对模式</div><div class="card-value" id="lcMode" style="font-size:clamp(16px, 1.5vw, 24px);">-</div></div>
+            </div>
+            <div class="box surface-panel" style="margin-bottom: 24px; flex-shrink: 0;">
+                <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:16px;">
+                    <div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
+                        <div class="box-title text-truncate" style="margin-bottom:0;">SPEC REFERENCE</div>
+                        <span id="specStatus" style="color:var(--text-muted); font-size:14px; font-weight:600;">未上传规格书</span>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
+                        <label style="background:var(--bg-base); border:1px solid var(--border-color); border-radius:var(--radius-md); padding:10px 20px; cursor:pointer; font-weight:600; font-size:14px; color:var(--text-muted); transition:all 0.3s;">
+                            📤 上传规格书
+                            <input type="file" id="specFileInput" accept=".json" style="display:none;" onchange="uploadSpec(event)">
+                        </label>
+                        <button id="specToggleBtn" onclick="toggleSpecCompare()" style="background:#333; color:#fff; padding:10px 24px; font-size:14px; display:none;">使用 Spec 基准</button>
+                    </div>
+                </div>
+                <div onclick="this.classList.toggle('expanded')" style="margin-top:12px; padding:12px 16px; background:var(--bg-base); border-radius:var(--radius-md); font-size:13px; color:var(--text-muted); line-height:1.6;">
+                    <b>规格书 JSON 格式:</b> { "spec_name": "...", "pcba_models": ["E3002609",...], "model_groups": {"A": ["E3002609",...], "B": [...]}, "items": {"测项名": {"unit":"V", "limits": [{"models": "*", "lo":"...", "hi":"..."}, {"models": ["E3002609"], "lo":"...", "hi":"..."}]} } }
+                    <br>提示: <b>models="*"</b> 表示所有型号共用此限值。上传后点击 "使用 Spec 基准" 切换比对模式。
+                </div>
+            </div>
+            <div class="box surface-panel hover-glow" style="flex:1; padding-bottom:0; overflow:hidden;">
+                <div class="box-title text-truncate" id="limitMatrixTitle" style="margin-bottom: 16px;">LIMIT COMPARISON MATRIX</div>
+                <div class="table-scroll" id="limitMatrixContainer" style="height: 600px;">
+                    <div style="text-align:center; padding: 60px; color: var(--text-muted); font-weight: 600;">SCANNING LIMIT CONSISTENCY...</div>
+                </div>
+                <div id="mobileLimitList"></div>
+            </div>
+        </section>
     </main>
+    <nav class="mobile-tab-bar" id="mobileTabBar"></nav>
 </div>
-
 <script>
 let __RECENT_RECORD_CACHE__ = [];
 let __SPC_MATRIX_CACHE__ = [];
+let __LIMIT_COMPARE_CACHE__ = null;
 let paretoChart, cpkChart;
 let spcCharts = [];
+let __IS_MOBILE__ = false;
 
-const chartOptions = {
-    colorText: '#888888',
-    colorLine: '#2a2a2a',
-    fontFamily: '"JetBrains Mono", "Inter", sans-serif',
-    accentRed: '#E31937',
-    accentWhite: '#ffffff'
-};
+function detectMobile() {
+    const ua = navigator.userAgent || navigator.vendor || window.opera;
+    const uaCheck = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini|mobile/i.test(ua);
+    const touchCheck = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    const widthCheck = window.innerWidth <= 900;
+    const smallScreen = window.innerWidth <= 1100 && window.innerHeight <= 800;
+    __IS_MOBILE__ = uaCheck || (touchCheck && (widthCheck || smallScreen));
+    const tabBar = document.getElementById('mobileTabBar');
+    if (__IS_MOBILE__) { tabBar.style.display = 'flex'; document.body.classList.add('is-mobile'); }
+    else { tabBar.style.display = 'none'; document.body.classList.remove('is-mobile'); }
+}
+
+const TAB_ITEMS = [
+    { id: 'overviewPanel', label: '监控', svg: '<svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>' },
+    { id: 'failCenterPanel', label: '检索', svg: '<svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>' },
+    { id: 'spcPanel', label: '矩阵', svg: '<svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>' },
+    { id: 'machinePanel', label: '机台', svg: '<svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><line x1="4" y1="10" x2="20" y2="10"/><line x1="10" y1="4" x2="10" y2="20"/></svg>' },
+    { id: 'limitPanel', label: '限值', svg: '<svg viewBox="0 0 24 24"><line x1="4" y1="21" x2="4" y2="14"/><line x1="10" y1="21" x2="10" y2="8"/><line x1="16" y1="21" x2="16" y2="3"/><line x1="20" y1="21" x2="20" y2="12"/></svg>' }
+];
+
+function buildMobileTabBar() {
+    const tabBar = document.getElementById('mobileTabBar');
+    tabBar.innerHTML = TAB_ITEMS.map((t, i) => '<div class="tab-item' + (i === 0 ? ' active' : '') + '" data-panel="' + t.id + '" onclick="mobileSwitchPanel(\'' + t.id + '\', this)">' + t.svg + '<span>' + t.label + '</span></div>').join('');
+}
+
+function mobileSwitchPanel(panelId, el) {
+    document.querySelectorAll(".tab-item").forEach(n => n.classList.remove("active"));
+    el.classList.add("active");
+    document.querySelectorAll(".panel").forEach(p => p.classList.remove("active"));
+    const targetPanel = document.getElementById(panelId);
+    if (targetPanel) { void targetPanel.offsetWidth; targetPanel.classList.add("active"); }
+    const nameMap = { 'overviewPanel': '效能监控', 'failCenterPanel': '日志检索', 'spcPanel': '统计矩阵', 'machinePanel': '机台遥测', 'limitPanel': '限值比对' };
+    document.getElementById("pageTitle").innerText = nameMap[panelId] || '效能监控';
+    document.getElementById("pageSub").innerText = '';
+    setTimeout(function() { if(paretoChart) paretoChart.resize(); if(cpkChart) cpkChart.resize(); spcCharts.forEach(function(c) { if(c) c.resize(); }); }, 100);
+    if (panelId === "machinePanel") loadMachines();
+    if (panelId === "failCenterPanel") renderFailCenter();
+    if (panelId === "spcPanel") loadAnalysis();
+    if (panelId === "limitPanel") loadLimitCompare();
+}
+
+function switchPanel(panelId, el) {
+    if (__IS_MOBILE__) { var tabItem = document.querySelector('.tab-item[data-panel="' + panelId + '"]'); if (tabItem) mobileSwitchPanel(panelId, tabItem); return; }
+    document.querySelectorAll(".panel").forEach(p => p.classList.remove("active"));
+    document.querySelectorAll(".nav-item").forEach(n => n.classList.remove("active"));
+    var targetPanel = document.getElementById(panelId);
+    void targetPanel.offsetWidth;
+    targetPanel.classList.add("active");
+    el.classList.add("active");
+    document.getElementById("pageTitle").innerText = el.innerText;
+    document.getElementById("pageSub").innerText = '';
+    setTimeout(function() { if(paretoChart) paretoChart.resize(); if(cpkChart) cpkChart.resize(); spcCharts.forEach(function(c) { if(c) c.resize(); }); }, 50);
+    if (panelId === "machinePanel") loadMachines();
+    if (panelId === "failCenterPanel") renderFailCenter();
+    if (panelId === "spcPanel") loadAnalysis();
+    if (panelId === "limitPanel") loadLimitCompare();
+}
+
+window.addEventListener('resize', function() {
+    detectMobile();
+    if(paretoChart) paretoChart.resize();
+    if(cpkChart) cpkChart.resize();
+    spcCharts.forEach(function(c) { if(c) c.resize(); });
+});
+
+function normalizeResult(result) {
+    var text = String(result || "").toUpperCase();
+    if (text.includes("PASS") || text.includes("OK")) return "PASS";
+    if (text.includes("FAIL") || text.includes("NG")) return "FAIL";
+    return "中断";
+}
+
+function resultPill(res) {
+    var r = normalizeResult(res);
+    if (r === "PASS") return '<span class="pill pill-pass">PASS</span>';
+    if (r === "FAIL") return '<span class="pill pill-fail">FAIL</span>';
+    return '<span class="pill pill-interrupt">中断</span>';
+}
 
 function initCharts() {
     paretoChart = echarts.init(document.getElementById('paretoChart'), null, { renderer: 'canvas' });
     cpkChart = echarts.init(document.getElementById('cpkChart'), null, { renderer: 'canvas' });
 }
-
-function switchPanel(panelId, el) {
-    document.querySelectorAll(".panel").forEach(p => p.classList.remove("active"));
-    document.querySelectorAll(".nav-item").forEach(n => n.classList.remove("active"));
-    
-    const targetPanel = document.getElementById(panelId);
-    void targetPanel.offsetWidth; 
-    
-    targetPanel.classList.add("active");
-    el.classList.add("active");
-    
-    document.getElementById("pageTitle").innerText = el.innerText; 
-    
-    const subs = {
-        'overviewPanel': '',
-        'failCenterPanel': '',
-        'spcPanel': '',
-        'machinePanel': ''
-    };
-    document.getElementById("pageSub").innerText = subs[panelId];
-
-    setTimeout(() => {
-        if(paretoChart) paretoChart.resize();
-        if(cpkChart) cpkChart.resize();
-        spcCharts.forEach(c => { if(c) c.resize(); });
-    }, 50);
-
-    if (panelId === "machinePanel") loadMachines();
-    if (panelId === "failCenterPanel") renderFailCenter();
-    if (panelId === "spcPanel") loadAnalysis(); 
-}
-
-window.addEventListener('resize', () => {
-    if(paretoChart) paretoChart.resize();
-    if(cpkChart) cpkChart.resize();
-    spcCharts.forEach(c => { if(c) c.resize(); });
-});
-
-function normalizeResult(result) {
-    const text = String(result || "").toUpperCase();
-    if (text.includes("PASS") || text.includes("OK")) return "PASS";
-    if (text.includes("FAIL") || text.includes("NG")) return "FAIL";
-    return "中断"; 
-}
-
-function resultPill(res) {
-    const r = normalizeResult(res);
-    if (r === "PASS") return `<span class="pill pill-pass">PASS</span>`;
-    if (r === "FAIL") return `<span class="pill pill-fail">FAIL</span>`;
-    return `<span class="pill pill-interrupt">中断</span>`;
-}
-
 async function loadDashboardData() {
     try {
-        const [statsRes, recentRes, insightsRes] = await Promise.all([
-            fetch("/api/stats"), fetch("/api/recent?limit=100"), fetch("/api/engineering_insights")
-        ]);
-        const stats = await statsRes.json();
-        const recent = await recentRes.json();
-        const insights = await insightsRes.json();
-        
+        var res = await fetch("/api/stats");
+        var stats = await res.json();
+        var res2 = await fetch("/api/recent?limit=100");
+        var recent = await res2.json();
+        var res3 = await fetch("/api/engineering_insights");
+        var insights = await res3.json();
         __RECENT_RECORD_CACHE__ = recent;
-
         document.getElementById("statTotal").innerText = stats.total || 0;
         document.getElementById("statPass").innerText = stats.pass || 0;
         document.getElementById("statFail").innerText = stats.fail || 0;
         document.getElementById("statInterrupt").innerText = stats.interrupt || 0;
         document.getElementById("statFpy").innerText = (stats.fpy || 0) + "%";
-
-        document.getElementById("recentBody").innerHTML = recent.map((r, i) => `
-            <tr onclick="openModal(${i})">
-                <td class="mono" style="color:var(--text-muted)">${String(i+1).padStart(3, '0')}</td>
-                <td class="mono text-truncate">${r.sn || "-"}</td>
-                <td class="text-truncate">${r.model || "-"}</td>
-                <td>${resultPill(r.business_result)}</td>
-                <td class="text-truncate" style="color: #fff;">${r.fail_items && r.fail_items.length > 0 ? r.fail_items[0].name : "-"}</td>
-                <td class="mono text-truncate" style="color:var(--text-muted); font-size:13px;">${r.time || "-"}</td>
-            </tr>
-        `).join("");
-
-        const topFails = stats.top_fail || [];
-        paretoChart.setOption({
+        document.getElementById("recentBody").innerHTML = recent.map(function(r, i) {
+            return '<tr onclick="openModal(' + i + ')">' +
+                '<td class="mono" style="color:var(--text-muted)">' + String(i+1).padStart(3, '0') + '</td>' +
+                '<td class="mono text-truncate">' + (r.sn || "-") + '</td>' +
+                '<td class="text-truncate">' + (r.model || "-") + '</td>' +
+                '<td>' + resultPill(r.business_result) + '</td>' +
+                '<td class="text-truncate" style="color: #fff;">' + (r.fail_items && r.fail_items.length > 0 ? r.fail_items[0].name : "-") + '</td>' +
+                '<td class="mono text-truncate" style="color:var(--text-muted); font-size:13px;">' + (r.time || "-") + '</td></tr>';
+        }).join("");
+        var topFails = stats.top_fail || [];
+        if (paretoChart) paretoChart.setOption({
             backgroundColor: 'transparent',
-            tooltip: { trigger: 'axis', backgroundColor: '#fff', borderColor: '#fff', textStyle: {color: '#000', fontFamily: chartOptions.fontFamily} },
+            tooltip: { trigger: 'axis', backgroundColor: '#fff', borderColor: '#fff', textStyle: {color: '#000', fontFamily: '" + "Inter" + "'} },
             grid: { left: '0%', right: '4%', bottom: '0%', top: '10%', containLabel: true },
-            xAxis: { type: 'category', data: topFails.map(item => item.item.substring(0,10)), axisLabel: {color: chartOptions.colorText, fontSize: 11, fontFamily: chartOptions.fontFamily}, axisLine: {show:false}, axisTick: {show:false} },
-            yAxis: { type: 'value', splitLine: { lineStyle: { color: chartOptions.colorLine, type: 'solid' } }, axisLabel: {color: chartOptions.colorText, fontFamily: chartOptions.fontFamily} },
-            series: [{ data: topFails.map(item => item.count), type: 'bar', barWidth: '40%', itemStyle: { color: chartOptions.accentRed, borderRadius: [4,4,0,0] } }]
+            xAxis: { type: 'category', data: topFails.map(function(item) { return item.item.substring(0,10); }), axisLabel: {color: '#888888', fontSize: 11, fontFamily: '" + "Inter" + "'}, axisLine: {show:false}, axisTick: {show:false} },
+            yAxis: { type: 'value', splitLine: { lineStyle: { color: '#2a2a2a', type: 'solid' } }, axisLabel: {color: '#888888', fontFamily: '" + "Inter" + "'} },
+            series: [{ data: topFails.map(function(item) { return item.count; }), type: 'bar', barWidth: '40%', itemStyle: { color: '#E31937', borderRadius: [4,4,0,0] } }]
         });
-
-        const cpkWarnings = insights.cpk_warnings || [];
-        cpkChart.setOption({
+        var cpkWarnings = insights.cpk_warnings || [];
+        if (cpkChart) cpkChart.setOption({
             backgroundColor: 'transparent',
-            tooltip: { trigger: 'axis', backgroundColor: '#fff', borderColor: '#fff', textStyle: {color: '#000', fontFamily: chartOptions.fontFamily}, formatter: '{b}: Cpk {c}' },
+            tooltip: { trigger: 'axis', backgroundColor: '#fff', borderColor: '#fff', textStyle: {color: '#000', fontFamily: '" + "Inter" + "'}, formatter: '{b}: Cpk {c}' },
             grid: { left: '0%', right: '15%', bottom: '0%', top: '10%', containLabel: true },
-            xAxis: { type: 'value', splitLine: { lineStyle: { color: chartOptions.colorLine, type: 'solid' } }, axisLabel: {color: chartOptions.colorText, fontFamily: chartOptions.fontFamily} },
-            yAxis: { type: 'category', data: cpkWarnings.map(w => w.item.substring(0,15)), axisLabel: {color: chartOptions.colorText, fontSize: 11, fontFamily: chartOptions.fontFamily}, axisLine: {show:false}, axisTick: {show:false} },
-            series: [{ 
-                data: cpkWarnings.map(w => w.cpk), type: 'bar', barWidth: '40%',
-                label: {show: true, position: 'right', color: '#fff', fontSize: 12, fontFamily: chartOptions.fontFamily, formatter: '{c}'}, 
-                itemStyle: { color: '#555555', borderRadius: [0,4,4,0] } 
-            }]
+            xAxis: { type: 'value', splitLine: { lineStyle: { color: '#2a2a2a', type: 'solid' } }, axisLabel: {color: '#888888', fontFamily: '" + "Inter" + "'} },
+            yAxis: { type: 'category', data: cpkWarnings.map(function(w) { return w.item.substring(0,15); }), axisLabel: {color: '#888888', fontSize: 11, fontFamily: '" + "Inter" + "'}, axisLine: {show:false}, axisTick: {show:false} },
+            series: [{ data: cpkWarnings.map(function(w) { return w.cpk; }), type: 'bar', barWidth: '40%', label: {show: true, position: 'right', color: '#fff', fontSize: 12, fontFamily: '" + "Inter" + "', formatter: '{c}'}, itemStyle: { color: '#555555', borderRadius: [0,4,4,0] } }]
         });
-
     } catch(e) { console.error(e); }
 }
-
 async function loadAnalysis() {
     try {
-        const resp = await fetch("/api/analysis");
-        const data = await resp.json();
-        const matrix = data.spc_matrix || [];
+        var resp = await fetch("/api/analysis");
+        var data = await resp.json();
+        var matrix = data.spc_matrix || [];
         __SPC_MATRIX_CACHE__ = matrix;
-
-        const grid = document.getElementById("spcGrid");
-        if (matrix.length === 0) {
-            grid.innerHTML = '<div style="color:var(--text-muted); grid-column: 1 / -1; text-align:center; padding: 60px; font-weight: 600;">NO METRICS AVAILABLE.</div>';
-            return;
-        }
-
+        var grid = document.getElementById("spcGrid");
+        if (matrix.length === 0) { grid.innerHTML = '<div style="color:var(--text-muted); grid-column: 1 / -1; text-align:center; padding: 60px; font-weight: 600;">NO METRICS AVAILABLE.</div>'; return; }
         grid.innerHTML = "";
-        spcCharts.forEach(c => { if(c) c.dispose(); });
+        spcCharts.forEach(function(c) { if(c) c.dispose(); });
         spcCharts = [];
-
-        matrix.forEach((m, idx) => {
-            const container = document.createElement("div");
-            container.id = `spcContainer${idx}`;
-            container.className = "spc-wrapper hover-invert-float";
-            container.innerHTML = `<div id="spc${idx}" class="chart-container" style="height: 260px;"></div>`;
+        matrix.forEach(function(m, idx) {
+            var container = document.createElement("div");
+            container.id = "spcContainer" + idx;
+            container.className = "spc-wrapper hover-glow";
+            container.innerHTML = '<div id="spc' + idx + '" class="chart-container" style="height: 260px;"></div>';
             grid.appendChild(container);
         });
-
-        setTimeout(() => {
-            matrix.forEach((m, idx) => {
-                const dom = document.getElementById(`spc${idx}`);
+        setTimeout(function() {
+            matrix.forEach(function(m, idx) {
+                var dom = document.getElementById("spc" + idx);
                 if (!dom) return;
-                const chart = echarts.init(dom, null, { renderer: 'canvas' });
-                const option = {
-                    backgroundColor: 'transparent', animation: false, 
-                    title: { 
-                        text: m.name, 
-                        textStyle: { fontSize: 15, color: '#fff', fontWeight: 700, fontFamily: chartOptions.fontFamily, width: 340, overflow: 'truncate' }, 
-                        left: '3%', top: 5 
-                    },
-                    tooltip: { trigger: 'axis', backgroundColor: '#fff', borderColor: '#fff', padding: 12, textStyle:{color:'#000', fontFamily: chartOptions.fontFamily}, formatter: (params) => `<span style="color:#555; font-size:12px; font-weight:600;">${m.points[params[0].dataIndex].sn}</span><br><b style="font-size:18px; color:#000;">${params[0].value}</b> <span style="font-size:12px; color:#888">${m.unit || ''}</span>` },
+                var chart = echarts.init(dom, null, { renderer: 'canvas' });
+                chart.setOption({
+                    backgroundColor: 'transparent', animation: false,
+                    title: { text: m.name, textStyle: { fontSize: 15, color: '#fff', fontWeight: 700, fontFamily: 'Inter', width: 340, overflow: 'truncate' }, left: '3%', top: 5 },
+                    tooltip: { trigger: 'axis', backgroundColor: '#fff', borderColor: '#fff', padding: 12, textStyle:{color:'#000', fontFamily:'Inter'}, formatter: function(params) { return '<span style=\"color:#555; font-size:12px; font-weight:600;\">' + m.points[params[0].dataIndex].sn + '</span><br><b style=\"font-size:18px; color:#000;\">' + params[0].value + '</b> <span style=\"font-size:12px; color:#888\">' + (m.unit || '') + '</span>'; } },
                     grid: { left: '12%', right: '10%', bottom: '15%', top: '25%' },
-                    xAxis: { type: 'category', data: m.points.map(p => p.time), axisLabel: { fontSize: 10, color: chartOptions.colorText, fontFamily: chartOptions.fontFamily }, axisLine: {show:false}, axisTick: {show:false} },
-                    yAxis: { type: 'value', scale: true, axisLabel: { fontSize: 11, color: chartOptions.colorText, fontFamily: chartOptions.fontFamily }, splitLine: { lineStyle: { color: chartOptions.colorLine, type:'solid' } } },
-                    series: [
-                        {
-                            data: m.points.map(p => p.val), type: 'scatter', symbolSize: 6, hoverAnimation: false, 
-                            itemStyle: { color: chartOptions.accentWhite, opacity: 0.8 },
-                            markLine: {
-                                silent: true, symbol: 'none', label: { position: 'end', fontSize: 11, color: chartOptions.accentRed, fontFamily: chartOptions.fontFamily, fontWeight: 700 },
-                                data: [
-                                    m.hilim ? { yAxis: m.hilim, lineStyle: { color: chartOptions.accentRed, type: 'solid', width: 2 }, label: { formatter: 'USL' } } : null,
-                                    m.lolim ? { yAxis: m.lolim, lineStyle: { color: chartOptions.accentRed, type: 'solid', width: 2 }, label: { formatter: 'LSL' } } : null
-                                ].filter(Boolean)
-                            }
-                        }
-                    ]
-                };
-                chart.setOption(option);
+                    xAxis: { type: 'category', data: m.points.map(function(p) { return p.time; }), axisLabel: { fontSize: 10, color: '#888888', fontFamily: 'Inter' }, axisLine: {show:false}, axisTick: {show:false} },
+                    yAxis: { type: 'value', scale: true, axisLabel: { fontSize: 11, color: '#888888', fontFamily: 'Inter' }, splitLine: { lineStyle: { color: '#2a2a2a', type:'solid' } } },
+                    series: [{ data: m.points.map(function(p) { return p.val; }), type: 'scatter', symbolSize: 6, hoverAnimation: false, itemStyle: { color: '#E31937', opacity: 0.7 }, markLine: { silent: true, symbol: 'none', label: { position: 'end', fontSize: 11, color: '#E31937', fontFamily: 'Inter', fontWeight: 700 }, data: [m.hilim ? { yAxis: m.hilim, lineStyle: { color: '#E31937', type: 'solid', width: 2 }, label: { formatter: 'USL' } } : null, m.lolim ? { yAxis: m.lolim, lineStyle: { color: '#E31937', type: 'solid', width: 2 }, label: { formatter: 'LSL' } } : null].filter(Boolean) } }]
+                });
                 spcCharts.push(chart);
             });
             filterSpcMatrix();
         }, 50);
-
     } catch (err) { console.error(err); }
 }
 
 function filterSpcMatrix() {
-    const q = document.getElementById('spcSearchInput').value.toUpperCase();
-    __SPC_MATRIX_CACHE__.forEach((m, idx) => {
-        const container = document.getElementById(`spcContainer${idx}`);
+    var q = document.getElementById('spcSearchInput').value.toUpperCase();
+    __SPC_MATRIX_CACHE__.forEach(function(m, idx) {
+        var container = document.getElementById("spcContainer" + idx);
         if(container) {
-            const isMatch = m.name.toUpperCase().includes(q);
+            var isMatch = m.name.toUpperCase().includes(q);
             container.style.display = isMatch ? 'block' : 'none';
-            if (isMatch && spcCharts[idx]) {
-                setTimeout(() => { spcCharts[idx].resize(); }, 0);
-            }
+            if (isMatch && spcCharts[idx]) { setTimeout(function() { spcCharts[idx].resize(); }, 0); }
         }
     });
 }
 
-function renderFailCenter(filterText = "") {
-    const tbody = document.getElementById("failCenterBody");
-    const fails = __RECENT_RECORD_CACHE__.filter(r => normalizeResult(r.business_result) !== "PASS");
-    const filtered = fails.filter(r => (r.sn + " " + r.station).toUpperCase().includes(filterText.toUpperCase()));
-
-    tbody.innerHTML = filtered.map((r, i) => `
-        <tr onclick="openModal(-1, '${r.sn}')">
-            <td class="mono text-truncate">${r.sn || "-"}</td>
-            <td style="font-weight: 600;" class="text-truncate">${r.station || "-"}</td>
-            <td>${resultPill(r.business_result)}</td>
-            <td class="text-truncate" style="color: #fff;">${r.fail_items && r.fail_items.length > 0 ? r.fail_items[0].name : "-"}</td>
-            <td class="mono text-truncate" style="color:var(--text-muted); font-size:13px;">${r.time || "-"}</td>
-        </tr>
-    `).join("");
+function renderFailCenter(filterText) {
+    if (filterText === undefined) filterText = "";
+    var fails = __RECENT_RECORD_CACHE__.filter(function(r) { return normalizeResult(r.business_result) !== "PASS"; });
+    var filtered = fails.filter(function(r) { return (r.sn + " " + r.station).toUpperCase().includes(filterText.toUpperCase()); });
+    if (__IS_MOBILE__) {
+        var container = document.getElementById("mobileFailList");
+        if (filtered.length === 0) { container.innerHTML = '<div class=\"mobile-fail-empty\">未找到匹配记录</div>'; return; }
+        container.innerHTML = filtered.map(function(r) {
+            return '<div class=\"mobile-fail-card\" onclick=\"openModal(-1, \'' + r.sn + '\')\">' +
+                '<div class=\"mobile-fail-card-top\"><span class=\"mobile-fail-card-sn\">' + (r.sn || "-") + '</span>' + resultPill(r.business_result) + '</div>' +
+                '<div class=\"mobile-fail-card-bottom\"><span class=\"mobile-fail-card-station\">' + (r.station || "-") + '</span>' +
+                '<span class=\"mobile-fail-card-issue\">' + (r.fail_items && r.fail_items.length > 0 ? r.fail_items[0].name : "-") + '</span>' +
+                '<span class=\"mobile-fail-card-time\">' + (r.time || "-") + '</span></div></div>';
+        }).join("");
+    } else {
+        var tbody = document.getElementById("failCenterBody");
+        tbody.innerHTML = filtered.map(function(r) {
+            return '<tr onclick=\"openModal(-1, \'' + r.sn + '\')\">' +
+                '<td class=\"mono text-truncate\">' + (r.sn || "-") + '</td>' +
+                '<td style=\"font-weight: 600;\" class=\"text-truncate\">' + (r.station || "-") + '</td>' +
+                '<td>' + resultPill(r.business_result) + '</td>' +
+                '<td class=\"text-truncate\" style=\"color: #fff;\">' + (r.fail_items && r.fail_items.length > 0 ? r.fail_items[0].name : "-") + '</td>' +
+                '<td class=\"mono text-truncate\" style=\"color:var(--text-muted); font-size:13px;\">' + (r.time || "-") + '</td></tr>';
+        }).join("");
+    }
 }
 
 function filterFailCenter() { renderFailCenter(document.getElementById('snInput').value); }
 
-function openModal(index, searchSn = null) {
-    let record = __RECENT_RECORD_CACHE__[index];
-    if(searchSn) record = __RECENT_RECORD_CACHE__.find(r => r.sn === searchSn);
+function openModal(index, searchSn) {
+    if (searchSn === undefined) searchSn = null;
+    var record = __RECENT_RECORD_CACHE__[index];
+    if(searchSn) record = __RECENT_RECORD_CACHE__.find(function(r) { return r.sn === searchSn; });
     if(!record) return;
-
-    const passCnt = record.passed_tests || 0;
-    const failCnt = record.failed_tests || 0;
-    const intCnt = record.interrupted_tests || 0;
-    const totalCnt = record.total_tests || (passCnt + failCnt + intCnt);
-    const rawItems = record.raw_items || [];
-
-    let aiAdviceHtml = "";
-    const failItems = record.fail_items || [];
+    var passCnt = record.passed_tests || 0;
+    var failCnt = record.failed_tests || 0;
+    var intCnt = record.interrupted_tests || 0;
+    var totalCnt = record.total_tests || (passCnt + failCnt + intCnt);
+    var rawItems = record.raw_items || [];
+    var failItems = record.fail_items || [];
+    var aiAdviceHtml = "";
     if(failItems.length > 0) {
-        const isOnlyGetUnitInfo = failItems.every(item => {
-            const n = (item.name || item.raw_name || "").toUpperCase();
-            return n.includes("GET UNIT INFO") || n.includes("GET_UNIT_INFO");
-        });
-        if(isOnlyGetUnitInfo) {
-            aiAdviceHtml = `<div class="ai-advice-box" style="border-left-color: #ffbe0b;"><b>[工艺拦截]</b> 检测到 MES 路由驳回。请检查条码枪扫描状态或 MES 工单挂载逻辑。</div>`;
-        } else {
-            aiAdviceHtml = `<div class="ai-advice-box"><b>[硬件失效]</b> 检测到物理测试项异常。请 TE 工程师立即介入排查治具探针磨损或仪器线缆连接状态。</div>`;
-        }
+        var isOnlyGetUnitInfo = failItems.every(function(item) { var n = (item.name || item.raw_name || "").toUpperCase(); return n.includes("GET UNIT INFO") || n.includes("GET_UNIT_INFO"); });
+        if(isOnlyGetUnitInfo) { aiAdviceHtml = '<div class=\"ai-advice-box\" style=\"border-left-color: #ffbe0b;\"><b>[工艺拦截]</b> 检测到 MES 路由驳回。请检查条码枪扫描状态或 MES 工单挂载逻辑。</div>'; }
+        else { aiAdviceHtml = '<div class=\"ai-advice-box\"><b>[硬件失效]</b> 检测到物理测试项异常。请 TE 工程师立即介入排查治具探针磨损或仪器线缆连接状态。</div>'; }
     }
-
-    const modal = document.createElement("div");
+    var modal = document.createElement("div");
     modal.className = "modal-mask";
     modal.id = "diagModal";
-    modal.innerHTML = `
-        <div class="modal-window">
-            <div class="modal-header">
-                <div class="text-truncate" style="font-size:24px; font-weight:800; color:#fff; letter-spacing:-0.5px; width: 90%;">
-                    DIAGNOSTIC TARGET / <span style="font-family:var(--font-num); margin-left:8px;">${record.sn}</span>
-                </div>
-                <button onclick="document.getElementById('diagModal').remove()" class="modal-close">
-                    <svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                        <line x1="18" y1="6" x2="6" y2="18"></line>
-                        <line x1="6" y1="6" x2="18" y2="18"></line>
-                    </svg>
-                </button>
-            </div>
-            <div class="modal-body">
-                ${aiAdviceHtml}
-                <div class="quadrant-grid">
-                    <div class="quadrant-box">Total Steps <b>${totalCnt}</b></div>
-                    <div class="quadrant-box">Pass <b style="color:var(--text-main);">${passCnt}</b></div>
-                    <div class="quadrant-box">Fail <b style="color:var(--tesla-red);">${failCnt}</b></div>
-                    <div class="quadrant-box">Abort <b>${intCnt}</b></div>
-                </div>
-                
-                <div style="display:flex; justify-content:space-between; align-items:center; margin: 40px 0 24px;">
-                    <div style="font-weight:700; font-size:18px; letter-spacing:-0.5px;">RAW MEASUREMENT TRACE</div>
-                    <input type="text" id="modalSearch" placeholder="过滤测项..." style="width:280px; padding:12px 20px;" oninput="filterModalItems()">
-                </div>
-                
-                <div class="table-scroll" style="max-height:420px; background: var(--bg-base); border-radius: var(--radius-md); border: 1px solid var(--border-color);">
-                    <table>
-                        <thead><tr><th style="width:10%;">No.</th><th style="width:15%;">State</th><th style="width:35%;">Metric</th><th style="width:20%;">Value</th><th style="width:20%;">Limits</th></tr></thead>
-                        <tbody id="modalTableBody">
-                            ${rawItems.map((item, idx) => `
-                                <tr class="raw-item-row">
-                                    <td class="mono" style="color:var(--text-muted)">${String(idx + 1).padStart(3,'0')}</td>
-                                    <td><span class="pill pill-${item.status === 'PASS' ? 'pass' : (item.status === 'FAIL' ? 'fail' : 'interrupt')}">${item.status || '-'}</span></td>
-                                    <td class="item-name mono text-truncate" style="font-size:14px;" title="${item.name || item.raw_name || '-'}">${item.name || item.raw_name || '-'}</td>
-                                    <td class="item-value mono text-truncate" style="color: ${item.status === 'FAIL' ? 'var(--tesla-red)' : '#fff'}; font-size:16px; font-weight: 700;">${item.value || '-'} <span style="font-size:12px; font-weight: 500; color:var(--text-muted)">${item.unit || ''}</span></td>
-                                    <td class="mono text-truncate" style="color:var(--text-muted); font-size:13px;">${item.lolim !== undefined ? item.lolim : '-'} ~ ${item.hilim !== undefined ? item.hilim : '-'}</td>
-                                </tr>
-                            `).join('')}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    `;
+    modal.innerHTML = '<div class=\"modal-window\"><div class=\"modal-header\"><div class=\"text-truncate\" style=\"font-size:24px; font-weight:800; color:#fff; letter-spacing:-0.5px; width: 90%;\">DIAGNOSTIC TARGET / <span style=\"font-family:var(--font-num); margin-left:8px;\">' + record.sn + '</span></div><button onclick=\"document.getElementById(\'diagModal\').remove()\" class=\"modal-close\"><svg viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"2.5\" fill=\"none\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><line x1=\"18\" y1=\"6\" x2=\"6\" y2=\"18\"></line><line x1=\"6\" y1=\"6\" x2=\"18\" y2=\"18\"></line></svg></button></div><div class=\"modal-body\">' + aiAdviceHtml + '<div class=\"quadrant-grid\"><div class=\"quadrant-box\">Total Steps <b>' + totalCnt + '</b></div><div class=\"quadrant-box\">Pass <b style=\"color:var(--text-main);\">' + passCnt + '</b></div><div class=\"quadrant-box\">Fail <b style=\"color:var(--tesla-red);\">' + failCnt + '</b></div><div class=\"quadrant-box\">Abort <b>' + intCnt + '</b></div></div><div style=\"display:flex; justify-content:space-between; align-items:center; margin: 40px 0 24px;\"><div style=\"font-weight:700; font-size:18px; letter-spacing:-0.5px;\">RAW MEASUREMENT TRACE</div><input type=\"text\" id=\"modalSearch\" placeholder=\"过滤测项...\" style=\"width:280px; padding:12px 20px;\" oninput=\"filterModalItems()\"></div><div class=\"table-scroll\" style=\"max-height:420px; background: var(--bg-base); border-radius: var(--radius-md); border: 1px solid var(--border-color);\"><table><thead><tr><th style=\"width:10%;\">No.</th><th style=\"width:15%;\">State</th><th style=\"width:35%;\">Metric</th><th style=\"width:20%;\">Value</th><th style=\"width:20%;\">Limits</th></tr></thead><tbody id=\"modalTableBody\">' + rawItems.map(function(item, idx) {
+        var r = normalizeResult(item.status);
+        var pillClass = r === 'PASS' ? 'pass' : (r === 'FAIL' ? 'fail' : 'interrupt');
+        return '<tr class=\"raw-item-row\"><td class=\"mono\" style=\"color:var(--text-muted)\">' + String(idx + 1).padStart(3,'0') + '</td><td><span class=\"pill pill-' + pillClass + '\">' + (item.status || '-') + '</span></td><td class=\"item-name mono text-truncate\" style=\"font-size:14px;\" title=\"' + (item.name || item.raw_name || '-') + '\">' + (item.name || item.raw_name || '-') + '</td><td class=\"item-value mono text-truncate\" style=\"color: ' + (normalizeResult(item.status) === 'FAIL' ? 'var(--tesla-red)' : '#fff') + '; font-size:16px; font-weight: 700;\">' + (item.value || '-') + ' <span style=\"font-size:12px; font-weight: 500; color:var(--text-muted)\">' + (item.unit || '') + '</span></td><td class=\"mono text-truncate\" style=\"color:var(--text-muted); font-size:13px;\">' + (item.lolim !== undefined ? item.lolim : '-') + ' ~ ' + (item.hilim !== undefined ? item.hilim : '-') + '</td></tr>';
+    }).join('') + '</tbody></table></div></div></div>';
     document.body.appendChild(modal);
 }
 
 function filterModalItems() {
-    const q = document.getElementById('modalSearch').value.toUpperCase();
-    document.querySelectorAll('.raw-item-row').forEach(row => {
+    var q = document.getElementById('modalSearch').value.toUpperCase();
+    document.querySelectorAll('.raw-item-row').forEach(function(row) {
         row.style.display = (row.querySelector('.item-name')?.innerText.toUpperCase().includes(q) || row.querySelector('.item-value')?.innerText.toUpperCase().includes(q)) ? '' : 'none';
     });
+}
+async function loadLimitCompare() {
+    try {
+        var res = await fetch("/api/limit/compare");
+        var specRes = await fetch("/api/spec/current");
+        var json = await res.json();
+        var specJson = await specRes.json();
+        if (!json.ok) { document.getElementById("limitMatrixContainer").innerHTML = '<div style="text-align:center;padding:60px;color:var(--text-muted);font-weight:600;">MODULE UNAVAILABLE</div>'; return; }
+        var data = json.data;
+        __LIMIT_COMPARE_CACHE__ = data;
+        document.getElementById("lcStations").innerText = data.stations ? data.stations.length : 0;
+        document.getElementById("lcItems").innerText = data.total_items || 0;
+        var isSpecMode = data.mode === 'spec_compliance_matrix';
+        var specStatus = document.getElementById("specStatus");
+        var specToggle = document.getElementById("specToggleBtn");
+        if (specJson.ok && specJson.uploaded && specJson.spec) {
+            specStatus.innerHTML = '✅ 已加载: <b>' + specJson.spec.spec_name + '</b> (' + specJson.spec.item_count + ' 项)';
+            specToggle.style.display = 'inline-block';
+            specToggle.textContent = isSpecMode ? '🔁 切换机台对比' : '📐 使用 Spec 基准';
+        } else {
+            specStatus.textContent = '未上传规格书';
+            specToggle.style.display = 'none';
+        }
+        document.getElementById("lcMode").innerText = isSpecMode ? 'Spec 合规矩阵' : '机台对比矩阵';
+        document.getElementById("limitMatrixTitle").innerText = isSpecMode ? 'SPEC COMPLIANCE MATRIX / ' + (data.spec_name || '') : 'MACHINE COMPARISON MATRIX';
+        if (isSpecMode) {
+            document.getElementById("lcDiscLabel").innerText = '不合规测项';
+            document.getElementById("lcDiscrepancies").innerText = data.non_compliant_count || 0;
+            if (__IS_MOBILE__) { renderMobileLimitList(data, true); }
+            else { renderSpecMatrix(data); }
+        } else {
+            document.getElementById("lcDiscLabel").innerText = '不一致测项';
+            document.getElementById("lcDiscrepancies").innerText = data.inconsistent_count || 0;
+            if (__IS_MOBILE__) { renderMobileLimitList(data, false); }
+            else { renderMachineMatrix(data); }
+        }
+    } catch(e) { console.error(e); document.getElementById("limitMatrixContainer").innerHTML = '<div style="text-align:center;padding:60px;color:var(--tesla-red);font-weight:600;">LOAD ERROR: ' + e.message + '</div>'; }
+}
+
+function renderMobileLimitList(data, isSpecMode) {
+    var container = document.getElementById("mobileLimitList");
+    var items = data.items || [];
+    if (items.length === 0) { container.innerHTML = '<div class="mobile-limit-empty">未找到相关测项</div>'; return; }
+    var sortedItems = [...items].sort(function(a, b) { var aOk = isSpecMode ? a.all_compliant : a.all_same; var bOk = isSpecMode ? b.all_compliant : b.all_same; return (aOk ? 1 : 0) - (bOk ? 1 : 0); });
+    container.innerHTML = sortedItems.map(function(item) {
+        var status, statusClass;
+        if (isSpecMode) {
+            if (item.all_compliant) { status = '合规'; statusClass = 'pill-pass'; }
+            else { status = '不合规'; statusClass = 'pill-fail'; }
+        } else {
+            if (item.all_same) { status = '一致'; statusClass = 'pill-pass'; }
+            else if (item.model_diff) { status = '型号差异'; statusClass = 'pill-interrupt'; }
+            else { status = '不一致'; statusClass = 'pill-fail'; }
+        }
+        var stations = data.stations || [];
+        var detail = isSpecMode ? (item.compliant_count || 0) + '/' + stations.length + ' 合规' : stations.length + ' 站 · ' + (item.deviant_stations ? item.deviant_stations.length : 0) + ' 站偏离';
+        return '<div class="mobile-limit-card" onclick="showLimitDetailByName(\'' + item.item_name + '\')">' +
+            '<div class="mobile-limit-card-left"><span class="mobile-limit-card-name">' + item.item_name + '</span><span class="mobile-limit-card-detail">' + detail + '</span></div>' +
+            '<span class="pill ' + statusClass + '" style="font-size:9px;min-width:auto;padding:2px 8px;">' + status + '</span></div>';
+    }).join('');
+}
+
+function renderMachineMatrix(data) {
+    var stations = data.stations || [];
+    var items = data.items || [];
+    var container = document.getElementById("limitMatrixContainer");
+    if (items.length === 0) { container.innerHTML = '<div style="text-align:center;padding:60px;color:var(--text-muted);font-weight:600;">NO TEST ITEMS FOUND</div>'; return; }
+    var html = '<table><thead><tr><th style="width:5%;">#</th><th style="width:20%;">Test Item</th>';
+    for (var si = 0; si < stations.length; si++) {
+        var s = stations[si];
+        var model = data.station_models ? (data.station_models[s] || '') : '';
+        html += '<th style="width:' + Math.floor(65/stations.length) + '%;">' + s + '<br><span style="font-size:10px;color:var(--text-muted);font-weight:400;">' + model + '</span></th>';
+    }
+    html += '<th style="width:10%;">Status</th></tr></thead><tbody>';
+    var sortedItems = [...items].sort(function(a, b) { return (a.all_same ? 1 : 0) - (b.all_same ? 1 : 0); });
+    for (var i = 0; i < sortedItems.length; i++) {
+        var item = sortedItems[i];
+        var isConsistent = item.all_same;
+        var rowClass = isConsistent ? '' : ' style="background:rgba(227,25,55,0.05);"';
+        html += '<tr' + rowClass + ' onclick="showLimitDetail(' + i + ')">';
+        html += '<td class="mono" style="font-size:12px;color:var(--text-muted);">' + (i+1) + '</td>';
+        html += '<td class="mono text-truncate" style="font-size:13px;max-width:0;" title="' + item.item_name + '">' + item.item_name + '</td>';
+        for (var sj = 0; sj < stations.length; sj++) {
+            var s2 = stations[sj];
+            var info = item.by_station ? item.by_station[s2] : null;
+            if (!info || info.missing) { html += '<td style="font-size:12px;color:var(--text-muted);text-align:center;">-</td>'; }
+            else {
+                var limitStr = (info.lo || '') + ' ~ ' + (info.hi || '');
+                var isDeviant = item.deviant_stations && item.deviant_stations.includes(s2);
+                var color = isDeviant ? 'var(--tesla-red)' : '#fff';
+                html += '<td class="mono text-truncate" style="font-size:12px;color:' + color + ';max-width:0;" title="' + limitStr + '">' + limitStr + '</td>';
+            }
+        }
+        if (isConsistent) { html += '<td style="text-align:center;"><span class="pill pill-pass" style="font-size:11px;min-width:auto;padding:2px 10px;">一致</span></td>'; }
+        else if (item.model_diff) { html += '<td style="text-align:center;"><span class="pill pill-interrupt" style="background:#ffbe0b;color:#000;font-size:11px;min-width:auto;padding:2px 10px;">型号差异</span></td>'; }
+        else { html += '<td style="text-align:center;"><span class="pill pill-fail" style="font-size:11px;min-width:auto;padding:2px 10px;">不一致</span></td>'; }
+        html += '</tr>';
+    }
+    html += '</tbody></table>';
+    container.innerHTML = html;
+}
+
+function renderSpecMatrix(data) {
+    var stations = data.stations || [];
+    var items = data.items || [];
+    var container = document.getElementById("limitMatrixContainer");
+    if (items.length === 0) { container.innerHTML = '<div style="text-align:center;padding:60px;color:var(--text-muted);font-weight:600;">NO SPEC-RELATED ITEMS FOUND</div>'; return; }
+    var html = '<table><thead><tr><th style="width:4%;">#</th><th style="width:18%;">Test Item</th>';
+    for (var si = 0; si < stations.length; si++) {
+        html += '<th style="width:' + Math.floor(65/stations.length) + '%;">' + stations[si] + '</th>';
+    }
+    html += '<th style="width:8%;">Status</th></tr></thead><tbody>';
+    var sortedItems = [...items].sort(function(a, b) { return (a.all_compliant ? 1 : 0) - (b.all_compliant ? 1 : 0); });
+    for (var i = 0; i < sortedItems.length; i++) {
+        var item = sortedItems[i];
+        var isCompliant = item.all_compliant;
+        var rowClass = isCompliant ? '' : ' style="background:rgba(227,25,55,0.05);"';
+        html += '<tr' + rowClass + ' onclick="showLimitDetail(' + i + ')">';
+        html += '<td class="mono" style="font-size:12px;color:var(--text-muted);">' + (i+1) + '</td>';
+        html += '<td class="mono text-truncate" style="font-size:13px;max-width:0;" title="' + item.item_name + '">' + item.item_name + '</td>';
+        for (var sj = 0; sj < stations.length; sj++) {
+            var s = stations[sj];
+            var info = item.by_station ? item.by_station[s] : null;
+            if (!info) { html += '<td style="font-size:12px;color:var(--text-muted);text-align:center;">-</td>'; }
+            else if (info.missing) { html += '<td style="font-size:12px;color:var(--text-muted);text-align:center;">缺失</td>'; }
+            else {
+                var limitStr = (info.lo || '') + '~' + (info.hi || '');
+                if (info.match) { html += '<td class="mono text-truncate" style="font-size:12px;color:#4caf50;max-width:0;" title="' + limitStr + '">' + limitStr + '</td>'; }
+                else { html += '<td class="mono text-truncate" style="font-size:12px;color:var(--tesla-red);font-weight:700;max-width:0;" title="' + (info.note || limitStr) + '">' + limitStr + '</td>'; }
+            }
+        }
+        if (isCompliant) { html += '<td style="text-align:center;"><span class="pill pill-pass" style="font-size:11px;min-width:auto;padding:2px 10px;">合规</span></td>'; }
+        else { html += '<td style="text-align:center;"><span class="pill pill-fail" style="font-size:11px;min-width:auto;padding:2px 10px;">不合规</span></td>'; }
+        html += '</tr>';
+    }
+    html += '</tbody></table>';
+    container.innerHTML = html;
+}
+function showLimitDetailByName(itemName) {
+    var data = __LIMIT_COMPARE_CACHE__;
+    if (!data || !data.items) return;
+    var idx = data.items.findIndex(function(item) { return item.item_name === itemName; });
+    if (idx >= 0) showLimitDetail(idx);
+}
+
+function showLimitDetail(idx) {
+    var data = __LIMIT_COMPARE_CACHE__;
+    if (!data || !data.items || !data.items[idx]) return;
+    var item = data.items[idx];
+    var stations = data.stations || [];
+    var isSpecMode = data.mode === 'spec_compliance_matrix';
+    var modal = document.createElement("div");
+    modal.className = "modal-mask";
+    modal.id = "limitDetailModal";
+    var stationsHtml = '';
+    for (var si = 0; si < stations.length; si++) {
+        var s = stations[si];
+        var info = item.by_station ? item.by_station[s] : null;
+        if (!info || info.missing) {
+            stationsHtml += '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border-color);font-size:14px;"><span style="color:var(--text-muted);">' + s + '</span><span style="color:var(--text-muted);font-weight:600;">缺失</span></div>';
+        } else {
+            var limitStr = (info.lo || '-') + ' ~ ' + (info.hi || '-');
+            if (isSpecMode) {
+                var match = info.match;
+                stationsHtml += '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border-color);font-size:14px;"><span>' + s + '<br><span style="font-size:11px;color:var(--text-muted);">' + (info.model || '') + '</span></span><span style="text-align:right;"><span style="font-weight:700;font-family:var(--font-num);color:' + (match ? '#4caf50' : 'var(--tesla-red)') + ';">' + limitStr + '</span><br><span style="font-size:11px;color:' + (match ? '#4caf50' : 'var(--tesla-red)') + ';">' + (match ? '✓ 符合规格' : '✗ 偏离规格') + '</span></span></div>';
+            } else {
+                var isDeviant = item.deviant_stations && item.deviant_stations.includes(s);
+                stationsHtml += '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border-color);font-size:14px;"><span>' + s + '<br><span style="font-size:11px;color:var(--text-muted);">' + (info.model || '') + '</span></span><span style="font-weight:700;font-family:var(--font-num);color:' + (isDeviant ? 'var(--tesla-red)' : '#fff') + ';">' + limitStr + '</span></div>';
+            }
+        }
+    }
+    var modelConsistencyHtml = '';
+    var mcKeys = Object.keys(item.model_consistency || {});
+    for (var mi = 0; mi < mcKeys.length; mi++) {
+        var model = mcKeys[mi];
+        var mc = item.model_consistency[model];
+        modelConsistencyHtml += '<tr><td class="mono" style="font-weight:700;">' + model + '</td><td class="mono" style="font-size:13px;">' + (mc.stations || []).join(', ') + '</td><td>' + (mc.consistent ? '<span class="pill pill-pass" style="font-size:11px;min-width:auto;padding:2px 10px;">一致</span>' : '<span class="pill pill-fail" style="font-size:11px;min-width:auto;padding:2px 10px;">不一致</span>') + '</td></tr>';
+    }
+    modal.innerHTML = '<div class="modal-window" style="width: min(1000px, 95vw);"><div class="modal-header"><div class="text-truncate" style="font-size:20px; font-weight:800; color:#fff; letter-spacing:-0.5px;">' + (isSpecMode ? 'SPEC COMPLIANCE' : 'MACHINE COMPARISON') + ' / <span style="font-family:var(--font-num); margin-left:8px;">' + item.item_name + '</span></div><button onclick="document.getElementById(\'limitDetailModal\').remove()" class="modal-close"><svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button></div><div class="modal-body"><div class="ai-advice-box" style="border-left-color: ' + (isSpecMode ? 'var(--tesla-red)' : '#ffbe0b') + ';"><b>[' + (isSpecMode ? 'Spec 合规' : '机台对比') + ']</b> 测项 "' + item.item_name + '" — ' + (isSpecMode ? (item.all_compliant ? '所有机台均符合规格' : (item.non_compliant_count || 0) + '/' + stations.length + ' 台机台偏离规格') : (item.all_same ? '所有机台限值一致' : (item.model_diff ? '差异因 PCBA 型号不同导致' : (item.deviant_stations ? item.deviant_stations.length : 0) + ' 台机台限值偏离多数派'))) + '</div><div style="display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-bottom:24px;"><div style="background:var(--bg-base); border-radius:var(--radius-md); padding:24px; border:1px solid var(--border-color);"><div style="font-weight:700; font-size:14px; color:var(--text-muted); margin-bottom:12px;">STATION BREAKDOWN</div>' + stationsHtml + '</div><div style="background:var(--bg-base); border-radius:var(--radius-md); padding:24px; border:1px solid var(--border-color);"><div style="font-weight:700; font-size:14px; color:var(--text-muted); margin-bottom:12px;">' + (isSpecMode ? 'SPEC INFO' : 'MODEL INFO') + '</div>' + (isSpecMode ?
+        '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border-color);font-size:14px;"><span style="color:var(--text-muted);">规格书</span><span style="font-weight:700;">' + (data.spec_name || 'N/A') + '</span></div><div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border-color);font-size:14px;"><span style="color:var(--text-muted);">合规机台</span><span style="font-weight:700;color:#4caf50;">' + (item.compliant_count || 0) + '/' + stations.length + '</span></div><div style="display:flex;justify-content:space-between;padding:8px 0;font-size:14px;"><span style="color:var(--text-muted);">不合规机台</span><span style="font-weight:700;color:var(--tesla-red);">' + (item.non_compliant_count || 0) + '</span></div>'
+        :
+        '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border-color);font-size:14px;"><span style="color:var(--text-muted);">机台总数</span><span style="font-weight:700;">' + stations.length + '</span></div><div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border-color);font-size:14px;"><span style="color:var(--text-muted);">所有机台一致</span><span style="font-weight:700;color:' + (item.all_same ? '#4caf50' : 'var(--tesla-red)') + ';">' + (item.all_same ? '是' : '否') + '</span></div><div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border-color);font-size:14px;"><span style="color:var(--text-muted);">型号差异导致</span><span style="font-weight:700;color:' + (item.model_diff ? '#ffbe0b' : 'var(--text-muted)') + ';">' + (item.model_diff ? '是' : '否') + '</span></div><div style="display:flex;justify-content:space-between;padding:8px 0;font-size:14px;"><span style="color:var(--text-muted);">偏离机台</span><span style="font-weight:700;color:var(--tesla-red);">' + ((item.deviant_stations || []).join(', ') || '无') + '</span></div>') +
+    '</div></div><div style="font-weight:700; font-size:14px; color:var(--text-muted); margin-bottom:12px;">MODEL CONSISTENCY</div><div class="table-scroll" style="background:var(--bg-base); border-radius:var(--radius-md); border:1px solid var(--border-color);"><table><thead><tr><th>PCBA 型号</th><th>机台</th><th>限值是否一致</th></tr></thead><tbody>' + modelConsistencyHtml + '</tbody></table></div></div></div>';
+    document.body.appendChild(modal);
+}
+
+function uploadSpec(event) {
+    var file = event.target.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = async function(e) {
+        try {
+            var content = JSON.parse(e.target.result);
+            var res = await fetch("/api/spec/upload", { method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(content) });
+            var result = await res.json();
+            if (result.ok) {
+                document.getElementById("specStatus").innerHTML = '✅ 已加载: <b>' + result.spec_name + '</b> (' + result.item_count + ' 项)';
+                document.getElementById("specToggleBtn").style.display = 'inline-block';
+                document.getElementById("specToggleBtn").textContent = '📐 使用 Spec 基准';
+                loadLimitCompare();
+            } else { alert("上传失败: " + (result.message || "未知错误")); }
+        } catch(err) { alert("JSON 解析失败: " + err.message); }
+    };
+    reader.readAsText(file);
+    event.target.value = '';
+}
+
+var __USE_SPEC_MODE = false;
+
+async function toggleSpecCompare() {
+    __USE_SPEC_MODE = !__USE_SPEC_MODE;
+    try {
+        var res = await fetch("/api/limit/compare?use_spec=" + __USE_SPEC_MODE);
+        var json = await res.json();
+        if (json.ok) {
+            __LIMIT_COMPARE_CACHE__ = json.data;
+            var data = json.data;
+            document.getElementById("lcDiscrepancies").innerText = data.non_compliant_count || data.inconsistent_count || 0;
+            document.getElementById("lcMode").innerText = data.mode === 'spec_compliance_matrix' ? 'Spec 合规矩阵' : '机台对比矩阵';
+            document.getElementById("limitMatrixTitle").innerText = data.mode === 'spec_compliance_matrix' ? 'SPEC COMPLIANCE MATRIX / ' + (data.spec_name || '') : 'MACHINE COMPARISON MATRIX';
+            if (data.mode === 'spec_compliance_matrix') {
+                document.getElementById("lcDiscLabel").innerText = '不合规测项';
+                if (__IS_MOBILE__) { renderMobileLimitList(data, true); } else { renderSpecMatrix(data); }
+            } else {
+                document.getElementById("lcDiscLabel").innerText = '不一致测项';
+                if (__IS_MOBILE__) { renderMobileLimitList(data, false); } else { renderMachineMatrix(data); }
+            }
+            document.getElementById("specToggleBtn").textContent = data.mode === 'spec_compliance_matrix' ? '🔁 切换机台对比' : '📐 使用 Spec 基准';
+        }
+    } catch(e) { console.error(e); }
 }
 
 async function loadMachines() {
     try {
-        const res = await fetch("/api/telemetry/latest");
-        const data = await res.json();
-        const grid = document.getElementById("machineGrid");
-        if(data.machines.length === 0) return grid.innerHTML = `<div style="color:var(--text-muted); padding:20px; font-weight:600;">NO ACTIVE NODES DETECTED.</div>`;
-        
-        grid.innerHTML = data.machines.map(m => `
-            <div class="machine-card surface-panel hover-invert-float" style="border-top: 4px solid ${m.online_status==='ONLINE'?'#fff':'var(--tesla-red)'}">
-                <div class="text-truncate" style="font-size:28px; font-weight:700; font-family:var(--font-num); margin-bottom:24px; color:#fff; display:flex; justify-content:space-between; align-items:center;">
-                    [ ${m.machine_id} ]
-                    <div style="width:14px; height:14px; border-radius:50%; background:${m.online_status==='ONLINE'?'#fff':'var(--tesla-red)'}; flex-shrink:0;"></div>
-                </div>
-                <div class="machine-line"><span>DUT SN</span><b class="text-truncate" style="color:#fff; max-width: 60%;">${m.current_sn || 'N/A'}</b></div>
-                <div class="machine-line"><span>VIN VOLTAGE</span><b>${m.measurements.vin_voltage || '0.00'} V</b></div>
-                <div class="machine-line"><span>VIN CURRENT</span><b>${m.measurements.vin_current || '0.00'} A</b></div>
-                <div class="machine-line"><span>ACTIVE ALARMS</span><b style="color:${m.alarm_count > 0 ? 'var(--tesla-red)' : '#fff'};">${m.alarm_count}</b></div>
-            </div>
-        `).join("");
+        var res = await fetch("/api/telemetry/latest");
+        var data = await res.json();
+        var grid = document.getElementById("machineGrid");
+        if(data.machines.length === 0) { grid.innerHTML = '<div style="color:var(--text-muted); padding:20px; font-weight:600;">NO ACTIVE NODES DETECTED.</div>'; return; }
+        grid.innerHTML = data.machines.map(function(m) {
+            return '<div class="machine-card surface-panel hover-glow" style="border-top: 4px solid ' + (m.online_status==='ONLINE'?'#fff':'var(--tesla-red)') + '">' +
+                '<div class="text-truncate" style="font-size:28px; font-weight:700; font-family:var(--font-num); margin-bottom:24px; color:#fff; display:flex; justify-content:space-between; align-items:center;">[ ' + m.machine_id + ' ]<div style="width:14px; height:14px; border-radius:50%; background:' + (m.online_status==='ONLINE'?'#fff':'var(--tesla-red)') + '; flex-shrink:0;"></div></div>' +
+                '<div class="machine-line"><span>DUT SN</span><b class="text-truncate" style="color:#fff; max-width: 60%;">' + (m.current_sn || 'N/A') + '</b></div>' +
+                '<div class="machine-line"><span>VIN VOLTAGE</span><b>' + (m.measurements.vin_voltage || '0.00') + ' V</b></div>' +
+                '<div class="machine-line"><span>VIN CURRENT</span><b>' + (m.measurements.vin_current || '0.00') + ' A</b></div>' +
+                '<div class="machine-line"><span>ACTIVE ALARMS</span><b style="color:' + (m.alarm_count > 0 ? 'var(--tesla-red)' : '#fff') + ';">' + m.alarm_count + '</b></div></div>';
+        }).join("");
     } catch(e){}
 }
 
-setTimeout(initCharts, 100);
-loadDashboardData();
+detectMobile();
+buildMobileTabBar();
+setTimeout(function() { initCharts(); loadDashboardData(); }, 100);
 setInterval(loadDashboardData, 5000);
-setInterval(() => { if(document.getElementById('machinePanel').classList.contains('active')) loadMachines() }, 3000);
+setInterval(function() { if(document.getElementById('machinePanel').classList.contains('active')) loadMachines(); }, 3000);
+setInterval(function() { if(document.getElementById('limitPanel').classList.contains('active')) loadLimitCompare(); }, 10000);
 </script>
 </body>
 </html>
+
