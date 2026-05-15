@@ -34,9 +34,21 @@ SPEC_CACHE_FILE = str(_P / "data" / "spec_cache.json")
 ONLINE_SECONDS = 5
 STALE_SECONDS = 30
 MAX_HISTORY_PER_MACHINE = 300
+SERVER_PORT = 59488
 
 TELEMETRY_CACHE = {}
 TELEMETRY_HISTORY = {}
+
+# ==============================
+# 服务器端运行指标（终端监控仪表盘用）
+# ==============================
+SERVER_METRICS = {
+    "start_time": "",
+    "total_received": 0,
+    "bytes_received": 0,
+    "speed_samples": [],
+    "recent_uploads": [],
+}
 
 app = Flask(
     __name__,
@@ -347,6 +359,8 @@ def summarize_machine(payload):
         "current_step": payload.get("current_step", ""),
         "measurements": payload.get("measurements", {}),
         "alarm_count": alarm_count,
+        "timestamp": payload.get("timestamp", ""),
+        "ip": payload.get("ip", ""),
     }
 
 def build_machine_summary():
@@ -655,9 +669,141 @@ def api_db_telemetry():
     return jsonify({"ok": True, "data": get_telemetry_summary()})
 # ============================================================
 
+
+# ==============================
+# 服务器终端监控仪表盘 API
+# ==============================
+
+def _compute_transfer_speed():
+    samples = SERVER_METRICS.get("speed_samples", [])
+    now_ts = time.time()
+    recent = [(t, b) for t, b in samples if now_ts - t <= 30]
+    if len(recent) < 2:
+        return 0.0
+    total_bytes = sum(b for _, b in recent)
+    return total_bytes / 30.0
+
+
+def _compute_analyzed_stats():
+    try:
+        records = safe_load_records()
+        total_analyzed = len(records)
+        today = datetime.now().strftime("%Y-%m-%d")
+        daily_fail = 0
+        total_fail = 0
+        for r in records:
+            result = normalize_result(r.get("business_result") or r.get("result") or "中断")
+            if result == "FAIL":
+                total_fail += 1
+                file_time = str(r.get("time") or r.get("file_mtime") or "")
+                if file_time.startswith(today):
+                    daily_fail += 1
+        return total_analyzed, total_fail, daily_fail, len(SERVER_METRICS.get("recent_uploads", []))
+    except Exception:
+        return 0, 0, 0, 0
+
+
+@app.route("/api/upload_log", methods=["POST"])
+def api_upload_log():
+    """边缘机日志上传接口 — 接收 multipart/form-data (machine_id + file)"""
+    machine_id = request.form.get("machine_id", "UNKNOWN")
+    file_obj = request.files.get("file")
+    if not file_obj:
+        return jsonify({"ok": False, "error": "未接收到文件"})
+
+    filename = file_obj.filename or f"unknown_{int(time.time())}.xml"
+    file_content = file_obj.read()
+    file_size = len(file_content)
+
+    save_path = os.path.join(LOG_DIR, filename)
+    try:
+        os.makedirs(LOG_DIR, exist_ok=True)
+        with open(save_path, 'wb') as f:
+            f.write(file_content)
+    except Exception as e:
+        return jsonify({"ok": False, "error": f"文件保存失败: {e}"})
+
+    now_ts = time.time()
+    SERVER_METRICS["total_received"] += 1
+    SERVER_METRICS["bytes_received"] += file_size
+    SERVER_METRICS["speed_samples"].append((now_ts, file_size))
+    cutoff = now_ts - 300
+    SERVER_METRICS["speed_samples"] = [(t, b) for t, b in SERVER_METRICS["speed_samples"] if t > cutoff]
+
+    SERVER_METRICS["recent_uploads"].append({
+        "time": now_text(),
+        "filename": filename,
+        "machine_id": machine_id,
+        "size": file_size,
+        "event": "RECEIVED",
+        "result": "-",
+    })
+    SERVER_METRICS["recent_uploads"] = SERVER_METRICS["recent_uploads"][-100:]
+
+    return jsonify({"ok": True, "size": file_size})
+
+
+@app.route("/api/server/status")
+def api_server_status():
+    """返回服务器运行状态全景数据（供终端监控仪表盘轮询）"""
+    total_analyzed, total_fail, daily_fail, _ = _compute_analyzed_stats()
+    speed_bps = _compute_transfer_speed()
+
+    machine_summary = build_machine_summary()
+
+    system_info = {}
+    try:
+        import psutil
+        system_info = {
+            "cpu_percent": psutil.cpu_percent(interval=None),
+            "memory_percent": psutil.virtual_memory().percent,
+            "disk_percent": psutil.disk_usage("/").percent,
+            "load_avg": [round(x, 2) for x in psutil.getloadavg()],
+        }
+    except Exception:
+        system_info = {"cpu_percent": None, "memory_percent": None, "disk_percent": None, "load_avg": None}
+
+    uptime_str = ""
+    if SERVER_METRICS.get("start_time"):
+        try:
+            start_dt = datetime.strptime(SERVER_METRICS["start_time"][:19], "%Y-%m-%d %H:%M:%S")
+            elapsed = int(time.time() - start_dt.timestamp())
+            days, rem = divmod(elapsed, 86400)
+            hours, rem = divmod(rem, 3600)
+            mins = rem // 60
+            uptime_str = f"{days}d {hours}h {mins}m"
+        except Exception:
+            uptime_str = "-"
+
+    return jsonify({
+        "server": {
+            "start_time": SERVER_METRICS.get("start_time", ""),
+            "uptime": uptime_str,
+            "port": SERVER_PORT,
+        },
+        "metrics": {
+            "total_received": SERVER_METRICS["total_received"],
+            "total_analyzed": total_analyzed,
+            "total_fail": total_fail,
+            "daily_fail": daily_fail,
+            "daily_date": datetime.now().strftime("%Y-%m-%d"),
+            "bytes_received": SERVER_METRICS["bytes_received"],
+            "transfer_speed_bps": round(speed_bps, 1),
+            "transfer_speed_display": (
+                f"{speed_bps / 1048576:.1f} MB/s" if speed_bps >= 1048576
+                else f"{speed_bps / 1024:.1f} KB/s" if speed_bps >= 1024
+                else f"{speed_bps:.0f} B/s"
+            ),
+            "recent_uploads": SERVER_METRICS["recent_uploads"][-20:],
+        },
+        "machines": machine_summary,
+        "system": system_info,
+    })
+
 if __name__ == "__main__":
     os.makedirs(LOG_DIR, exist_ok=True)
     os.makedirs(str(_P / "cache"), exist_ok=True)
+    SERVER_METRICS["start_time"] = now_text()
     load_telemetry_cache()
     # [新增] 初始化数据库
     if DB_AVAILABLE and init_db:
@@ -667,4 +813,4 @@ if __name__ == "__main__":
         except Exception as _e:
             print(f"[DB] Init failed: {_e}")
     # [修改点] 开启多线程并关闭调试模式，优化 Ubuntu 服务器响应性
-    app.run(host="0.0.0.0", port=59488, debug=False, threaded=True)
+    app.run(host="0.0.0.0", port=SERVER_PORT, debug=False, threaded=True)
