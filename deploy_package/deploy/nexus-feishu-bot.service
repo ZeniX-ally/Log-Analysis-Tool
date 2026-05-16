@@ -1,0 +1,20 @@
+[Unit]
+Description=NEXUS FCT Feishu Bot Service (FCT6)
+After=network.target
+
+[Service]
+Type=simple
+User=root
+Group=root
+WorkingDirectory=/opt/nexus-feishu
+Environment="PATH=/opt/nexus-feishu/venv_feishu/bin"
+ExecStart=/opt/nexus-feishu/venv_feishu/bin/python3 /opt/nexus-feishu/feishu_service.py --server http://172.28.55.66:59488 --port 59489
+Restart=always
+RestartSec=10
+StartLimitIntervalSec=60
+StartLimitBurst=3
+StandardOutput=append:/var/log/nexus-feishu/output.log
+StandardError=append:/var/log/nexus-feishu/error.log
+
+[Install]
+WantedBy=multi-user.target
